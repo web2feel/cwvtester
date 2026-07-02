@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@400;450;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:#fafafa;color:#18181b;font-family:'Geist',system-ui,-apple-system,'Segoe UI',sans-serif;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+button{font-family:inherit}
+input{font-family:inherit}
+::selection{background:#fbd9c9}
+@keyframes fadeUp{from{opacity:0;transform:translateY(12px)}to{opacity:1;transform:none}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+</style>
+</helmet>
+
+<header style="position:sticky;top:0;z-index:50;background:rgba(250,250,250,0.82);backdrop-filter:saturate(180%) blur(12px);-webkit-backdrop-filter:saturate(180%) blur(12px);border-bottom:1px solid #ececec">
+  <div style="max-width:1160px;margin:0 auto;padding:0 24px;height:60px;display:flex;align-items:center;justify-content:space-between;gap:20px">
+    <div onClick="{{ goDashboard }}" style="display:flex;align-items:center;gap:11px;cursor:pointer">
+      <div style="width:30px;height:30px;border-radius:9px;background:#e35a2a;display:flex;align-items:flex-end;justify-content:center;gap:2.5px;padding:7px 6px;box-shadow:0 1px 2px rgba(227,90,42,0.4)">
+        <span style="width:3px;height:7px;background:#fff;border-radius:2px;opacity:0.7"></span>
+        <span style="width:3px;height:12px;background:#fff;border-radius:2px"></span>
+        <span style="width:3px;height:9px;background:#fff;border-radius:2px;opacity:0.85"></span>
+      </div>
+      <span style="font-size:15px;font-weight:600;letter-spacing:-0.01em">Core Web Vitals Tester</span>
+      <span style="font-size:10px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;border:1px solid #e4e4e7;border-radius:999px;padding:2px 7px">Beta</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}"><button onClick="{{ goHistory }}" style="background:transparent;border:none;font-size:13px;font-weight:500;color:#71717a;padding:8px 12px;border-radius:8px;cursor:pointer" style-hover="background:#f0f0f1;color:#18181b">History</button></sc-if>
+      <sc-if value="{{ isHistory }}"><button onClick="{{ goDashboard }}" style="background:#fff1ea;border:none;font-size:13px;font-weight:600;color:#c2410c;padding:8px 12px;border-radius:8px;cursor:pointer">History</button></sc-if>
+      <button style="display:flex;align-items:center;gap:7px;background:#fff;border:1px solid #e4e4e7;font-size:13px;font-weight:600;color:#18181b;padding:8px 14px;border-radius:9px;cursor:pointer;box-shadow:0 1px 2px rgba(0,0,0,0.04)" style-hover="border-color:#d4d4d8;background:#fafafa">
+        Export report
+        <span style="color:#a1a1aa;font-size:10px">▾</span>
+      </button>
+    </div>
+  </div>
+</header>
+
+<main style="max-width:1160px;margin:0 auto;padding:34px 24px 96px">
+
+  <sc-if value="{{ isDashboard }}" hint-placeholder-val="{{ true }}"><div>
+
+  <!-- Page title -->
+  <div style="margin-bottom:24px">
+    <h1 style="font-size:26px;font-weight:600;letter-spacing:-0.02em;margin:0 0 6px">Performance audit</h1>
+    <p style="font-size:14.5px;color:#71717a;margin:0;line-height:1.5;max-width:640px">Analyze website performance and identify the biggest opportunities for improvement.</p>
+  </div>
+
+  <!-- Audit form -->
+  <div style="background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);padding:18px 20px;display:flex;flex-wrap:wrap;align-items:center;gap:14px">
+    <div style="flex:1;min-width:280px;position:relative;display:flex;align-items:center">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" style="position:absolute;left:14px;opacity:0.5"><circle cx="12" cy="12" r="9" stroke="#71717a" stroke-width="1.8"/><path d="M3 12h18M12 3c2.5 2.4 3.8 5.6 3.8 9s-1.3 6.6-3.8 9c-2.5-2.4-3.8-5.6-3.8-9S9.5 5.4 12 3Z" stroke="#71717a" stroke-width="1.6"/></svg>
+      <input value="https://acme-store.com" readonly style="width:100%;height:44px;border:1px solid #e4e4e7;border-radius:11px;padding:0 14px 0 40px;font-size:14px;font-family:'Geist Mono',monospace;color:#18181b;background:#fff;outline:none" style-focus="border-color:#e35a2a;box-shadow:0 0 0 3px rgba(227,90,42,0.12)">
+    </div>
+
+    <div style="position:relative;display:inline-flex;background:#f0f0f1;border-radius:11px;padding:4px">
+      <sc-if value="{{ isDesktop }}"><div style="position:absolute;top:4px;left:4px;width:calc(50% - 4px);height:calc(100% - 8px);background:#fff;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.1);transition:all 0.2s ease"></div></sc-if>
+      <sc-if value="{{ isMobile }}" hint-placeholder-val="{{ true }}"><div style="position:absolute;top:4px;right:4px;width:calc(50% - 4px);height:calc(100% - 8px);background:#fff;border-radius:8px;box-shadow:0 1px 2px rgba(0,0,0,0.1);transition:all 0.2s ease"></div></sc-if>
+      <button data-device="desktop" onClick="{{ setDevice }}" style="position:relative;z-index:1;border:none;background:transparent;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:500;cursor:pointer;color:#52525b">Desktop</button>
+      <button data-device="mobile" onClick="{{ setDevice }}" style="position:relative;z-index:1;border:none;background:transparent;padding:8px 18px;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;color:#18181b">Mobile</button>
+    </div>
+
+    <button style="height:44px;background:#e35a2a;border:none;color:#fff;font-size:14px;font-weight:600;padding:0 24px;border-radius:11px;cursor:pointer;box-shadow:0 1px 2px rgba(227,90,42,0.35);display:flex;align-items:center;gap:8px" style-hover="background:#cc4d20">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none"><path d="M8 5v14l11-7z" fill="#fff"/></svg>
+      Run Audit
+    </button>
+  </div>
+
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin:12px 4px 0;font-size:12px;color:#a1a1aa;font-family:'Geist Mono',monospace">
+    <span style="display:flex;align-items:center;gap:6px;color:#16a34a"><span style="width:6px;height:6px;border-radius:50%;background:#16a34a"></span>Audit complete</span>
+    <span style="color:#d4d4d8">·</span><span>Moto G Power · Slow 4G throttle</span>
+    <span style="color:#d4d4d8">·</span><span>Lighthouse 12 · Chrome 126</span>
+    <span style="color:#d4d4d8">·</span><span>just now</span>
+  </div>
+
+  <!-- Performance summary hero -->
+  <div style="display:grid;grid-template-columns:minmax(260px,320px) 1fr;gap:32px;align-items:center;background:#fff;border:1px solid #ececec;border-radius:20px;box-shadow:0 1px 2px rgba(0,0,0,0.04);padding:34px;margin-top:34px">
+    <div style="display:flex;flex-direction:column;align-items:center;border-right:1px solid #f4f4f5;padding-right:16px">
+      <div style="position:relative;width:220px;height:126px">
+        <svg width="220" height="130" viewBox="0 0 220 130">
+          <path d="M20 110 A90 90 0 0 1 200 110" fill="none" stroke="#f0f0f1" stroke-width="15" stroke-linecap="round"/>
+          <path d="M20 110 A90 90 0 0 1 200 110" fill="none" stroke="#f59e0b" stroke-width="15" stroke-linecap="round" stroke-dasharray="181 283"/>
+        </svg>
+        <div style="position:absolute;left:0;right:0;top:48px;text-align:center">
+          <div style="font-family:'Geist Mono',monospace;font-size:54px;font-weight:600;line-height:1;letter-spacing:-0.03em">{{ scoreText }}</div>
+          <div style="font-size:11px;color:#a1a1aa;font-family:'Geist Mono',monospace;margin-top:2px">/ 100</div>
+        </div>
+      </div>
+      <div style="display:inline-flex;align-items:center;gap:8px;margin-top:8px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;font-size:13px;font-weight:600;padding:6px 15px;border-radius:999px">
+        <span style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></span>Needs Improvement
+      </div>
+    </div>
+
+    <div>
+      <div style="font-size:11px;font-weight:600;letter-spacing:0.05em;color:#a1a1aa;text-transform:uppercase;margin-bottom:12px">Summary</div>
+      <p style="font-size:19px;line-height:1.55;color:#3f3f46;font-weight:450;margin:0 0 24px;max-width:540px;text-wrap:pretty">This page scores <b style="color:#18181b;font-weight:600">64</b> on mobile. The biggest wins are eliminating render-blocking resources and shrinking the hero image — together an estimated <b style="color:#18181b;font-weight:600">~2.1s</b> faster load.</p>
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px">
+        <div style="background:#fafafa;border:1px solid #f0f0f1;border-radius:12px;padding:14px 16px">
+          <div style="font-family:'Geist Mono',monospace;font-size:24px;font-weight:600;letter-spacing:-0.02em">8</div>
+          <div style="font-size:12px;color:#71717a;margin-top:2px">Opportunities</div>
+        </div>
+        <div style="background:#fafafa;border:1px solid #f0f0f1;border-radius:12px;padding:14px 16px">
+          <div style="font-family:'Geist Mono',monospace;font-size:24px;font-weight:600;letter-spacing:-0.02em;color:#16a34a">3.65s</div>
+          <div style="font-size:12px;color:#71717a;margin-top:2px">Est. total savings</div>
+        </div>
+        <div style="background:#fafafa;border:1px solid #f0f0f1;border-radius:12px;padding:14px 16px">
+          <div style="font-family:'Geist Mono',monospace;font-size:24px;font-weight:600;letter-spacing:-0.02em">2.6<span style="font-size:14px;color:#a1a1aa"> MB</span></div>
+          <div style="font-size:12px;color:#71717a;margin-top:2px">Page weight</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Core metrics -->
+  <div style="display:flex;align-items:baseline;justify-content:space-between;margin:40px 4px 16px">
+    <h2 style="font-size:15px;font-weight:600;letter-spacing:-0.01em;margin:0">Core Web Vitals</h2>
+    <span style="font-size:12px;color:#a1a1aa;font-family:'Geist Mono',monospace">Lab data · mobile</span>
+  </div>
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px">
+
+    <!-- LCP -->
+    <div style="position:relative;background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <span style="font-size:13px;font-weight:600;letter-spacing:0.03em;color:#52525b;text-transform:uppercase">LCP</span>
+        <span data-metric="lcp" onMouseEnter="{{ onEnter }}" onMouseLeave="{{ onLeave }}" style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;border:1px solid #e4e4e7;border-radius:50%;color:#a1a1aa;font-size:10px;font-weight:600;cursor:help;font-family:'Geist Mono',monospace">i</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:3px;margin-bottom:12px">
+        <span style="font-family:'Geist Mono',monospace;font-size:36px;font-weight:600;line-height:1;letter-spacing:-0.03em">3.4</span>
+        <span style="font-family:'Geist Mono',monospace;font-size:16px;color:#a1a1aa">s</span>
+      </div>
+      <div style="display:inline-flex;align-items:center;gap:6px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:999px;margin-bottom:14px">
+        <span style="width:6px;height:6px;border-radius:50%;background:#f59e0b"></span>Needs Improvement
+      </div>
+      <div style="font-size:12.5px;color:#71717a;line-height:1.4;margin-bottom:18px">Largest Contentful Paint</div>
+      <div style="position:relative;margin-bottom:8px">
+        <div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><div style="width:40%;background:#bbf7d0"></div><div style="width:30%;background:#fde68a"></div><div style="width:30%;background:#fecaca"></div></div>
+        <div style="position:absolute;top:-3px;left:62%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:#18181b;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#a1a1aa;font-weight:500"><span>Good</span><span>Poor</span></div>
+      <sc-if value="{{ hover.lcp }}">
+        <div style="position:absolute;top:42px;right:14px;width:228px;z-index:20;background:#18181b;color:#fafafa;border-radius:12px;padding:14px;box-shadow:0 12px 32px rgba(0,0,0,0.28);font-size:12px;line-height:1.5;animation:fadeIn 0.12s ease">
+          <div style="font-weight:600;margin-bottom:7px">Largest Contentful Paint</div>
+          <div style="color:#a1a1aa;margin-bottom:10px">Time until the largest visible element renders — marks when the main content feels loaded.</div>
+          <div style="font-family:'Geist Mono',monospace;font-size:11px;color:#d4d4d8;display:flex;gap:8px"><span><span style="color:#4ade80">●</span> ≤2.5s good</span><span><span style="color:#fbbf24">●</span> ≤4s ok</span></div>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- INP -->
+    <div style="position:relative;background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <span style="font-size:13px;font-weight:600;letter-spacing:0.03em;color:#52525b;text-transform:uppercase">INP</span>
+        <span data-metric="inp" onMouseEnter="{{ onEnter }}" onMouseLeave="{{ onLeave }}" style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;border:1px solid #e4e4e7;border-radius:50%;color:#a1a1aa;font-size:10px;font-weight:600;cursor:help;font-family:'Geist Mono',monospace">i</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:3px;margin-bottom:12px">
+        <span style="font-family:'Geist Mono',monospace;font-size:36px;font-weight:600;line-height:1;letter-spacing:-0.03em">240</span>
+        <span style="font-family:'Geist Mono',monospace;font-size:16px;color:#a1a1aa">ms</span>
+      </div>
+      <div style="display:inline-flex;align-items:center;gap:6px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:999px;margin-bottom:14px">
+        <span style="width:6px;height:6px;border-radius:50%;background:#f59e0b"></span>Needs Improvement
+      </div>
+      <div style="font-size:12.5px;color:#71717a;line-height:1.4;margin-bottom:18px">Interaction to Next Paint</div>
+      <div style="position:relative;margin-bottom:8px">
+        <div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><div style="width:40%;background:#bbf7d0"></div><div style="width:30%;background:#fde68a"></div><div style="width:30%;background:#fecaca"></div></div>
+        <div style="position:absolute;top:-3px;left:55%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:#18181b;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#a1a1aa;font-weight:500"><span>Good</span><span>Poor</span></div>
+      <sc-if value="{{ hover.inp }}">
+        <div style="position:absolute;top:42px;right:14px;width:228px;z-index:20;background:#18181b;color:#fafafa;border-radius:12px;padding:14px;box-shadow:0 12px 32px rgba(0,0,0,0.28);font-size:12px;line-height:1.5;animation:fadeIn 0.12s ease">
+          <div style="font-weight:600;margin-bottom:7px">Interaction to Next Paint</div>
+          <div style="color:#a1a1aa;margin-bottom:10px">How quickly the page responds to taps, clicks, and key presses across the whole visit.</div>
+          <div style="font-family:'Geist Mono',monospace;font-size:11px;color:#d4d4d8;display:flex;gap:8px"><span><span style="color:#4ade80">●</span> ≤200ms good</span><span><span style="color:#fbbf24">●</span> ≤500ms ok</span></div>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- CLS -->
+    <div style="position:relative;background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <span style="font-size:13px;font-weight:600;letter-spacing:0.03em;color:#52525b;text-transform:uppercase">CLS</span>
+        <span data-metric="cls" onMouseEnter="{{ onEnter }}" onMouseLeave="{{ onLeave }}" style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;border:1px solid #e4e4e7;border-radius:50%;color:#a1a1aa;font-size:10px;font-weight:600;cursor:help;font-family:'Geist Mono',monospace">i</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:3px;margin-bottom:12px">
+        <span style="font-family:'Geist Mono',monospace;font-size:36px;font-weight:600;line-height:1;letter-spacing:-0.03em">0.05</span>
+      </div>
+      <div style="display:inline-flex;align-items:center;gap:6px;background:#ecfdf3;border:1px solid #bbf7d0;color:#15803d;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:999px;margin-bottom:14px">
+        <span style="width:6px;height:6px;border-radius:50%;background:#16a34a"></span>Good
+      </div>
+      <div style="font-size:12.5px;color:#71717a;line-height:1.4;margin-bottom:18px">Cumulative Layout Shift</div>
+      <div style="position:relative;margin-bottom:8px">
+        <div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><div style="width:40%;background:#bbf7d0"></div><div style="width:30%;background:#fde68a"></div><div style="width:30%;background:#fecaca"></div></div>
+        <div style="position:absolute;top:-3px;left:22%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:#18181b;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#a1a1aa;font-weight:500"><span>Good</span><span>Poor</span></div>
+      <sc-if value="{{ hover.cls }}">
+        <div style="position:absolute;top:42px;right:14px;width:228px;z-index:20;background:#18181b;color:#fafafa;border-radius:12px;padding:14px;box-shadow:0 12px 32px rgba(0,0,0,0.28);font-size:12px;line-height:1.5;animation:fadeIn 0.12s ease">
+          <div style="font-weight:600;margin-bottom:7px">Cumulative Layout Shift</div>
+          <div style="color:#a1a1aa;margin-bottom:10px">How much visible content shifts during load. Unexpected shifts cause misclicks and frustration.</div>
+          <div style="font-family:'Geist Mono',monospace;font-size:11px;color:#d4d4d8;display:flex;gap:8px"><span><span style="color:#4ade80">●</span> ≤0.1 good</span><span><span style="color:#fbbf24">●</span> ≤0.25 ok</span></div>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- TBT -->
+    <div style="position:relative;background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <span style="font-size:13px;font-weight:600;letter-spacing:0.03em;color:#52525b;text-transform:uppercase">TBT</span>
+        <span data-metric="tbt" onMouseEnter="{{ onEnter }}" onMouseLeave="{{ onLeave }}" style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;border:1px solid #e4e4e7;border-radius:50%;color:#a1a1aa;font-size:10px;font-weight:600;cursor:help;font-family:'Geist Mono',monospace">i</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:3px;margin-bottom:12px">
+        <span style="font-family:'Geist Mono',monospace;font-size:36px;font-weight:600;line-height:1;letter-spacing:-0.03em">610</span>
+        <span style="font-family:'Geist Mono',monospace;font-size:16px;color:#a1a1aa">ms</span>
+      </div>
+      <div style="display:inline-flex;align-items:center;gap:6px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:999px;margin-bottom:14px">
+        <span style="width:6px;height:6px;border-radius:50%;background:#ef4444"></span>Poor
+      </div>
+      <div style="font-size:12.5px;color:#71717a;line-height:1.4;margin-bottom:18px">Total Blocking Time</div>
+      <div style="position:relative;margin-bottom:8px">
+        <div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><div style="width:40%;background:#bbf7d0"></div><div style="width:30%;background:#fde68a"></div><div style="width:30%;background:#fecaca"></div></div>
+        <div style="position:absolute;top:-3px;left:86%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:#18181b;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#a1a1aa;font-weight:500"><span>Good</span><span>Poor</span></div>
+      <sc-if value="{{ hover.tbt }}">
+        <div style="position:absolute;top:42px;right:14px;width:228px;z-index:20;background:#18181b;color:#fafafa;border-radius:12px;padding:14px;box-shadow:0 12px 32px rgba(0,0,0,0.28);font-size:12px;line-height:1.5;animation:fadeIn 0.12s ease">
+          <div style="font-weight:600;margin-bottom:7px">Total Blocking Time</div>
+          <div style="color:#a1a1aa;margin-bottom:10px">Total time the main thread was blocked, delaying response to taps and clicks.</div>
+          <div style="font-family:'Geist Mono',monospace;font-size:11px;color:#d4d4d8;display:flex;gap:8px"><span><span style="color:#4ade80">●</span> ≤200ms good</span><span><span style="color:#fbbf24">●</span> ≤600ms ok</span></div>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- Speed Index -->
+    <div style="position:relative;background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <span style="font-size:13px;font-weight:600;letter-spacing:0.03em;color:#52525b;text-transform:uppercase">Speed Index</span>
+        <span data-metric="si" onMouseEnter="{{ onEnter }}" onMouseLeave="{{ onLeave }}" style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;border:1px solid #e4e4e7;border-radius:50%;color:#a1a1aa;font-size:10px;font-weight:600;cursor:help;font-family:'Geist Mono',monospace">i</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:3px;margin-bottom:12px">
+        <span style="font-family:'Geist Mono',monospace;font-size:36px;font-weight:600;line-height:1;letter-spacing:-0.03em">4.8</span>
+        <span style="font-family:'Geist Mono',monospace;font-size:16px;color:#a1a1aa">s</span>
+      </div>
+      <div style="display:inline-flex;align-items:center;gap:6px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:999px;margin-bottom:14px">
+        <span style="width:6px;height:6px;border-radius:50%;background:#f59e0b"></span>Needs Improvement
+      </div>
+      <div style="font-size:12.5px;color:#71717a;line-height:1.4;margin-bottom:18px">Speed Index</div>
+      <div style="position:relative;margin-bottom:8px">
+        <div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><div style="width:40%;background:#bbf7d0"></div><div style="width:30%;background:#fde68a"></div><div style="width:30%;background:#fecaca"></div></div>
+        <div style="position:absolute;top:-3px;left:58%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:#18181b;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#a1a1aa;font-weight:500"><span>Good</span><span>Poor</span></div>
+      <sc-if value="{{ hover.si }}">
+        <div style="position:absolute;top:42px;right:14px;width:228px;z-index:20;background:#18181b;color:#fafafa;border-radius:12px;padding:14px;box-shadow:0 12px 32px rgba(0,0,0,0.28);font-size:12px;line-height:1.5;animation:fadeIn 0.12s ease">
+          <div style="font-weight:600;margin-bottom:7px">Speed Index</div>
+          <div style="color:#a1a1aa;margin-bottom:10px">How quickly content is visually displayed — reflects perceived above-the-fold loading speed.</div>
+          <div style="font-family:'Geist Mono',monospace;font-size:11px;color:#d4d4d8;display:flex;gap:8px"><span><span style="color:#4ade80">●</span> ≤3.4s good</span><span><span style="color:#fbbf24">●</span> ≤5.8s ok</span></div>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- FCP -->
+    <div style="position:relative;background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);padding:20px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <span style="font-size:13px;font-weight:600;letter-spacing:0.03em;color:#52525b;text-transform:uppercase">FCP</span>
+        <span data-metric="fcp" onMouseEnter="{{ onEnter }}" onMouseLeave="{{ onLeave }}" style="width:18px;height:18px;display:flex;align-items:center;justify-content:center;border:1px solid #e4e4e7;border-radius:50%;color:#a1a1aa;font-size:10px;font-weight:600;cursor:help;font-family:'Geist Mono',monospace">i</span>
+      </div>
+      <div style="display:flex;align-items:baseline;gap:3px;margin-bottom:12px">
+        <span style="font-family:'Geist Mono',monospace;font-size:36px;font-weight:600;line-height:1;letter-spacing:-0.03em">1.9</span>
+        <span style="font-family:'Geist Mono',monospace;font-size:16px;color:#a1a1aa">s</span>
+      </div>
+      <div style="display:inline-flex;align-items:center;gap:6px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;font-size:11.5px;font-weight:600;padding:4px 10px;border-radius:999px;margin-bottom:14px">
+        <span style="width:6px;height:6px;border-radius:50%;background:#f59e0b"></span>Needs Improvement
+      </div>
+      <div style="font-size:12.5px;color:#71717a;line-height:1.4;margin-bottom:18px">First Contentful Paint</div>
+      <div style="position:relative;margin-bottom:8px">
+        <div style="display:flex;height:6px;border-radius:3px;overflow:hidden"><div style="width:40%;background:#bbf7d0"></div><div style="width:30%;background:#fde68a"></div><div style="width:30%;background:#fecaca"></div></div>
+        <div style="position:absolute;top:-3px;left:44%;transform:translateX(-50%);width:12px;height:12px;border-radius:50%;background:#18181b;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.3)"></div>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:10px;color:#a1a1aa;font-weight:500"><span>Good</span><span>Poor</span></div>
+      <sc-if value="{{ hover.fcp }}">
+        <div style="position:absolute;top:42px;right:14px;width:228px;z-index:20;background:#18181b;color:#fafafa;border-radius:12px;padding:14px;box-shadow:0 12px 32px rgba(0,0,0,0.28);font-size:12px;line-height:1.5;animation:fadeIn 0.12s ease">
+          <div style="font-weight:600;margin-bottom:7px">First Contentful Paint</div>
+          <div style="color:#a1a1aa;margin-bottom:10px">Time until the first text or image is painted — the first signal that the page is loading.</div>
+          <div style="font-family:'Geist Mono',monospace;font-size:11px;color:#d4d4d8;display:flex;gap:8px"><span><span style="color:#4ade80">●</span> ≤1.8s good</span><span><span style="color:#fbbf24">●</span> ≤3s ok</span></div>
+        </div>
+      </sc-if>
+    </div>
+
+  </div>
+
+  <!-- Top opportunities -->
+  <div style="display:flex;align-items:baseline;justify-content:space-between;margin:44px 4px 16px">
+    <h2 style="font-size:15px;font-weight:600;letter-spacing:-0.01em;margin:0">Top Performance Opportunities</h2>
+    <span style="font-size:12px;color:#a1a1aa;font-family:'Geist Mono',monospace">6 found · ranked by savings</span>
+  </div>
+  <div style="display:flex;flex-direction:column;gap:12px">
+
+    <!-- Issue: render blocking -->
+    <div style="background:#fff;border:1px solid #ececec;border-left:3px solid #ef4444;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,0.04);overflow:hidden">
+      <button data-id="rbr" onClick="{{ toggleIssue }}" style="width:100%;text-align:left;background:transparent;border:none;cursor:pointer;padding:18px 20px;display:flex;align-items:center;gap:16px" style-hover="background:#fcfcfc">
+        <span style="flex:none;display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;text-transform:uppercase;letter-spacing:0.03em"><span style="width:5px;height:5px;border-radius:50%;background:#ef4444"></span>High</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14.5px;font-weight:600;margin-bottom:3px">Eliminate render-blocking resources</div>
+          <div style="font-size:12.5px;color:#71717a">3 CSS and 2 JS files block the first paint</div>
+        </div>
+        <div style="text-align:right;flex:none">
+          <div style="font-family:'Geist Mono',monospace;font-size:16px;font-weight:600;color:#16a34a">−1.20s</div>
+          <div style="font-size:10.5px;color:#a1a1aa">est. savings</div>
+        </div>
+        <sc-if value="{{ open.rbr }}"><span style="flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#f4f4f5;color:#3f3f46;font-size:18px;line-height:1">−</span></sc-if>
+        <sc-if value="{{ closed.rbr }}" hint-placeholder-val="{{ true }}"><span style="flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#f4f4f5;color:#71717a;font-size:16px;line-height:1">+</span></sc-if>
+      </button>
+      <sc-if value="{{ open.rbr }}">
+        <div style="padding:0 20px 20px;border-top:1px solid #f4f4f5;animation:fadeIn 0.18s ease">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px 36px;padding-top:18px">
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Why it hurts</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">The browser must download and parse these files before it can render anything, delaying First Contentful Paint and LCP.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Likely cause</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Synchronous stylesheet and script tags placed in the document &lt;head&gt;.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Estimated impact</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">~1.2s faster FCP and LCP on mobile Slow 4G.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Recommended fix</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Inline critical CSS, defer non-critical styles, and add <code style="font-family:'Geist Mono',monospace;font-size:12px;background:#f4f4f5;padding:1px 5px;border-radius:4px">defer</code> to scripts.</div></div>
+          </div>
+          <div style="margin-top:18px"><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:8px">Affected resources</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <span style="font-family:'Geist Mono',monospace;font-size:12px;background:#fafafa;border:1px solid #ececec;border-radius:8px;padding:5px 10px;color:#52525b">main.css <b style="color:#a1a1aa;font-weight:500">48 KB</b></span>
+              <span style="font-family:'Geist Mono',monospace;font-size:12px;background:#fafafa;border:1px solid #ececec;border-radius:8px;padding:5px 10px;color:#52525b">vendor.css <b style="color:#a1a1aa;font-weight:500">61 KB</b></span>
+              <span style="font-family:'Geist Mono',monospace;font-size:12px;background:#fafafa;border:1px solid #ececec;border-radius:8px;padding:5px 10px;color:#52525b">analytics.js <b style="color:#a1a1aa;font-weight:500">33 KB</b></span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- Issue: hero image -->
+    <div style="background:#fff;border:1px solid #ececec;border-left:3px solid #ef4444;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,0.04);overflow:hidden">
+      <button data-id="img" onClick="{{ toggleIssue }}" style="width:100%;text-align:left;background:transparent;border:none;cursor:pointer;padding:18px 20px;display:flex;align-items:center;gap:16px" style-hover="background:#fcfcfc">
+        <span style="flex:none;display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:#fef2f2;border:1px solid #fecaca;color:#b91c1c;text-transform:uppercase;letter-spacing:0.03em"><span style="width:5px;height:5px;border-radius:50%;background:#ef4444"></span>High</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14.5px;font-weight:600;margin-bottom:3px">Serve the hero image in a modern format</div>
+          <div style="font-size:12.5px;color:#71717a">The LCP element ships as a 1.4 MB JPEG</div>
+        </div>
+        <div style="text-align:right;flex:none">
+          <div style="font-family:'Geist Mono',monospace;font-size:16px;font-weight:600;color:#16a34a">−0.90s</div>
+          <div style="font-size:10.5px;color:#a1a1aa">est. savings</div>
+        </div>
+        <sc-if value="{{ open.img }}"><span style="flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#f4f4f5;color:#3f3f46;font-size:18px;line-height:1">−</span></sc-if>
+        <sc-if value="{{ closed.img }}" hint-placeholder-val="{{ true }}"><span style="flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#f4f4f5;color:#71717a;font-size:16px;line-height:1">+</span></sc-if>
+      </button>
+      <sc-if value="{{ open.img }}">
+        <div style="padding:0 20px 20px;border-top:1px solid #f4f4f5;animation:fadeIn 0.18s ease">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px 36px;padding-top:18px">
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Why it hurts</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">The oversized, legacy-format image dominates the LCP element and the total network payload.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Likely cause</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Uncompressed JPEG served at 2× the display size with no responsive sizes.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Estimated impact</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">~0.9s faster LCP; roughly 1.1 MB saved.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Recommended fix</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Convert to AVIF/WebP, generate a <code style="font-family:'Geist Mono',monospace;font-size:12px;background:#f4f4f5;padding:1px 5px;border-radius:4px">srcset</code>, and lazy-load below-the-fold images.</div></div>
+          </div>
+          <div style="margin-top:18px"><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:8px">Affected resources</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <span style="font-family:'Geist Mono',monospace;font-size:12px;background:#fafafa;border:1px solid #ececec;border-radius:8px;padding:5px 10px;color:#52525b">hero.jpg <b style="color:#a1a1aa;font-weight:500">1.4 MB</b></span>
+              <span style="font-family:'Geist Mono',monospace;font-size:12px;background:#fafafa;border:1px solid #ececec;border-radius:8px;padding:5px 10px;color:#52525b">banner.png <b style="color:#a1a1aa;font-weight:500">420 KB</b></span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- Issue: unused JS -->
+    <div style="background:#fff;border:1px solid #ececec;border-left:3px solid #f59e0b;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,0.04);overflow:hidden">
+      <button data-id="ujs" onClick="{{ toggleIssue }}" style="width:100%;text-align:left;background:transparent;border:none;cursor:pointer;padding:18px 20px;display:flex;align-items:center;gap:16px" style-hover="background:#fcfcfc">
+        <span style="flex:none;display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;text-transform:uppercase;letter-spacing:0.03em"><span style="width:5px;height:5px;border-radius:50%;background:#f59e0b"></span>Medium</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14.5px;font-weight:600;margin-bottom:3px">Reduce unused JavaScript</div>
+          <div style="font-size:12.5px;color:#71717a">412 KB is downloaded but never runs on load</div>
+        </div>
+        <div style="text-align:right;flex:none">
+          <div style="font-family:'Geist Mono',monospace;font-size:16px;font-weight:600;color:#16a34a">−0.60s</div>
+          <div style="font-size:10.5px;color:#a1a1aa">est. savings</div>
+        </div>
+        <sc-if value="{{ open.ujs }}"><span style="flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#f4f4f5;color:#3f3f46;font-size:18px;line-height:1">−</span></sc-if>
+        <sc-if value="{{ closed.ujs }}" hint-placeholder-val="{{ true }}"><span style="flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#f4f4f5;color:#71717a;font-size:16px;line-height:1">+</span></sc-if>
+      </button>
+      <sc-if value="{{ open.ujs }}">
+        <div style="padding:0 20px 20px;border-top:1px solid #f4f4f5;animation:fadeIn 0.18s ease">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px 36px;padding-top:18px">
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Why it hurts</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Unused code still costs download, parse, and compile time on the main thread.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Likely cause</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Full library bundles imported instead of tree-shaken modules.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Estimated impact</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">~0.6s lower Total Blocking Time.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Recommended fix</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Code-split by route, tree-shake, and drop unused dependencies.</div></div>
+          </div>
+          <div style="margin-top:18px"><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:8px">Affected resources</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <span style="font-family:'Geist Mono',monospace;font-size:12px;background:#fafafa;border:1px solid #ececec;border-radius:8px;padding:5px 10px;color:#52525b">vendor.js <b style="color:#a1a1aa;font-weight:500">286 KB unused</b></span>
+              <span style="font-family:'Geist Mono',monospace;font-size:12px;background:#fafafa;border:1px solid #ececec;border-radius:8px;padding:5px 10px;color:#52525b">app.js <b style="color:#a1a1aa;font-weight:500">126 KB unused</b></span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- Issue: main thread -->
+    <div style="background:#fff;border:1px solid #ececec;border-left:3px solid #f59e0b;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,0.04);overflow:hidden">
+      <button data-id="mtw" onClick="{{ toggleIssue }}" style="width:100%;text-align:left;background:transparent;border:none;cursor:pointer;padding:18px 20px;display:flex;align-items:center;gap:16px" style-hover="background:#fcfcfc">
+        <span style="flex:none;display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:#fffbeb;border:1px solid #fde68a;color:#b45309;text-transform:uppercase;letter-spacing:0.03em"><span style="width:5px;height:5px;border-radius:50%;background:#f59e0b"></span>Medium</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14.5px;font-weight:600;margin-bottom:3px">Reduce main-thread work</div>
+          <div style="font-size:12.5px;color:#71717a">Main thread busy for 3.8s during load</div>
+        </div>
+        <div style="text-align:right;flex:none">
+          <div style="font-family:'Geist Mono',monospace;font-size:16px;font-weight:600;color:#16a34a">−0.45s</div>
+          <div style="font-size:10.5px;color:#a1a1aa">est. savings</div>
+        </div>
+        <sc-if value="{{ open.mtw }}"><span style="flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#f4f4f5;color:#3f3f46;font-size:18px;line-height:1">−</span></sc-if>
+        <sc-if value="{{ closed.mtw }}" hint-placeholder-val="{{ true }}"><span style="flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#f4f4f5;color:#71717a;font-size:16px;line-height:1">+</span></sc-if>
+      </button>
+      <sc-if value="{{ open.mtw }}">
+        <div style="padding:0 20px 20px;border-top:1px solid #f4f4f5;animation:fadeIn 0.18s ease">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px 36px;padding-top:18px">
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Why it hurts</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Long tasks block user input and delay interactivity after the page appears.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Likely cause</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Heavy JS execution and large style recalculations during hydration.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Estimated impact</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">~0.45s lower Total Blocking Time.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Recommended fix</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Break up long tasks, memoize expensive work, and offload to web workers.</div></div>
+          </div>
+          <div style="margin-top:18px"><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:8px">Affected resources</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <span style="font-family:'Geist Mono',monospace;font-size:12px;background:#fafafa;border:1px solid #ececec;border-radius:8px;padding:5px 10px;color:#52525b">app.js <b style="color:#a1a1aa;font-weight:500">1.9s scripting</b></span>
+              <span style="font-family:'Geist Mono',monospace;font-size:12px;background:#fafafa;border:1px solid #ececec;border-radius:8px;padding:5px 10px;color:#52525b">style &amp; layout <b style="color:#a1a1aa;font-weight:500">0.8s</b></span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- Issue: third party -->
+    <div style="background:#fff;border:1px solid #ececec;border-left:3px solid #d4d4d8;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,0.04);overflow:hidden">
+      <button data-id="tps" onClick="{{ toggleIssue }}" style="width:100%;text-align:left;background:transparent;border:none;cursor:pointer;padding:18px 20px;display:flex;align-items:center;gap:16px" style-hover="background:#fcfcfc">
+        <span style="flex:none;display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:#f4f4f5;border:1px solid #e4e4e7;color:#52525b;text-transform:uppercase;letter-spacing:0.03em"><span style="width:5px;height:5px;border-radius:50%;background:#a1a1aa"></span>Low</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14.5px;font-weight:600;margin-bottom:3px">Minimize third-party scripts</div>
+          <div style="font-size:12.5px;color:#71717a">5 third-party scripts add 240 KB</div>
+        </div>
+        <div style="text-align:right;flex:none">
+          <div style="font-family:'Geist Mono',monospace;font-size:16px;font-weight:600;color:#16a34a">−0.30s</div>
+          <div style="font-size:10.5px;color:#a1a1aa">est. savings</div>
+        </div>
+        <sc-if value="{{ open.tps }}"><span style="flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#f4f4f5;color:#3f3f46;font-size:18px;line-height:1">−</span></sc-if>
+        <sc-if value="{{ closed.tps }}" hint-placeholder-val="{{ true }}"><span style="flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#f4f4f5;color:#71717a;font-size:16px;line-height:1">+</span></sc-if>
+      </button>
+      <sc-if value="{{ open.tps }}">
+        <div style="padding:0 20px 20px;border-top:1px solid #f4f4f5;animation:fadeIn 0.18s ease">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px 36px;padding-top:18px">
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Why it hurts</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Third-party code competes for the main thread and network bandwidth you don't control.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Likely cause</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Analytics, chat widget, and A/B tooling all loaded eagerly at startup.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Estimated impact</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">~0.3s faster Total Blocking Time.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Recommended fix</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Load third-parties on interaction, or behind a lightweight facade.</div></div>
+          </div>
+          <div style="margin-top:18px"><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:8px">Affected resources</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <span style="font-family:'Geist Mono',monospace;font-size:12px;background:#fafafa;border:1px solid #ececec;border-radius:8px;padding:5px 10px;color:#52525b">analytics <b style="color:#a1a1aa;font-weight:500">88 KB</b></span>
+              <span style="font-family:'Geist Mono',monospace;font-size:12px;background:#fafafa;border:1px solid #ececec;border-radius:8px;padding:5px 10px;color:#52525b">intercom <b style="color:#a1a1aa;font-weight:500">104 KB</b></span>
+              <span style="font-family:'Geist Mono',monospace;font-size:12px;background:#fafafa;border:1px solid #ececec;border-radius:8px;padding:5px 10px;color:#52525b">optimizely <b style="color:#a1a1aa;font-weight:500">48 KB</b></span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+    <!-- Issue: unused CSS -->
+    <div style="background:#fff;border:1px solid #ececec;border-left:3px solid #d4d4d8;border-radius:14px;box-shadow:0 1px 2px rgba(0,0,0,0.04);overflow:hidden">
+      <button data-id="ucss" onClick="{{ toggleIssue }}" style="width:100%;text-align:left;background:transparent;border:none;cursor:pointer;padding:18px 20px;display:flex;align-items:center;gap:16px" style-hover="background:#fcfcfc">
+        <span style="flex:none;display:inline-flex;align-items:center;gap:6px;font-size:10.5px;font-weight:600;padding:4px 9px;border-radius:999px;background:#f4f4f5;border:1px solid #e4e4e7;color:#52525b;text-transform:uppercase;letter-spacing:0.03em"><span style="width:5px;height:5px;border-radius:50%;background:#a1a1aa"></span>Low</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:14.5px;font-weight:600;margin-bottom:3px">Remove unused CSS</div>
+          <div style="font-size:12.5px;color:#71717a">58 KB of CSS rules are never applied</div>
+        </div>
+        <div style="text-align:right;flex:none">
+          <div style="font-family:'Geist Mono',monospace;font-size:16px;font-weight:600;color:#16a34a">−0.20s</div>
+          <div style="font-size:10.5px;color:#a1a1aa">est. savings</div>
+        </div>
+        <sc-if value="{{ open.ucss }}"><span style="flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#f4f4f5;color:#3f3f46;font-size:18px;line-height:1">−</span></sc-if>
+        <sc-if value="{{ closed.ucss }}" hint-placeholder-val="{{ true }}"><span style="flex:none;width:26px;height:26px;display:flex;align-items:center;justify-content:center;border-radius:8px;background:#f4f4f5;color:#71717a;font-size:16px;line-height:1">+</span></sc-if>
+      </button>
+      <sc-if value="{{ open.ucss }}">
+        <div style="padding:0 20px 20px;border-top:1px solid #f4f4f5;animation:fadeIn 0.18s ease">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px 36px;padding-top:18px">
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Why it hurts</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Unused selectors still block rendering and inflate the transferred payload.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Likely cause</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">A global CSS framework shipped in full rather than purged.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Estimated impact</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">~0.2s faster First Contentful Paint.</div></div>
+            <div><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:6px">Recommended fix</div><div style="font-size:13px;color:#3f3f46;line-height:1.55">Purge unused selectors at build time and split CSS by route.</div></div>
+          </div>
+          <div style="margin-top:18px"><div style="font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;margin-bottom:8px">Affected resources</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px">
+              <span style="font-family:'Geist Mono',monospace;font-size:12px;background:#fafafa;border:1px solid #ececec;border-radius:8px;padding:5px 10px;color:#52525b">vendor.css <b style="color:#a1a1aa;font-weight:500">52 KB unused</b></span>
+            </div>
+          </div>
+        </div>
+      </sc-if>
+    </div>
+
+  </div>
+
+  <!-- Recommendations -->
+  <div style="display:flex;align-items:baseline;justify-content:space-between;margin:44px 4px 16px">
+    <h2 style="font-size:15px;font-weight:600;letter-spacing:-0.01em;margin:0">Prioritized recommendations</h2>
+    <span style="font-size:12px;color:#a1a1aa;font-family:'Geist Mono',monospace">start at the top</span>
+  </div>
+  <div style="background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);overflow:hidden">
+
+    <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid #f4f4f5;flex-wrap:wrap">
+      <span style="flex:none;width:24px;height:24px;border-radius:7px;border:1.5px solid #e4e4e7;display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:12px;font-weight:600;color:#a1a1aa">1</span>
+      <div style="flex:1;min-width:220px"><div style="font-size:14px;font-weight:600">Inline critical CSS &amp; defer the rest</div><div style="font-size:12.5px;color:#71717a;margin-top:2px">Removes the largest render-blocking bottleneck</div></div>
+      <span style="flex:none;font-size:11px;font-weight:600;padding:4px 11px;border-radius:999px;background:#fff1ea;border:1px solid #fed7c3;color:#c2410c">High Impact</span>
+      <div style="flex:none;width:80px;text-align:right"><div style="font-family:'Geist Mono',monospace;font-size:13.5px;font-weight:600;color:#16a34a">~1.2s</div><div style="font-size:10.5px;color:#a1a1aa">LCP</div></div>
+      <span style="flex:none;font-size:11.5px;color:#71717a;width:80px;text-align:right">Medium effort</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid #f4f4f5;flex-wrap:wrap">
+      <span style="flex:none;width:24px;height:24px;border-radius:7px;border:1.5px solid #e4e4e7;display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:12px;font-weight:600;color:#a1a1aa">2</span>
+      <div style="flex:1;min-width:220px"><div style="font-size:14px;font-weight:600">Convert the hero image to AVIF with srcset</div><div style="font-size:12.5px;color:#71717a;margin-top:2px">Cuts ~1.1 MB from the critical path</div></div>
+      <span style="flex:none;font-size:11px;font-weight:600;padding:4px 11px;border-radius:999px;background:#ecfdf5;border:1px solid #bbf7d0;color:#15803d">Quick Win</span>
+      <div style="flex:none;width:80px;text-align:right"><div style="font-family:'Geist Mono',monospace;font-size:13.5px;font-weight:600;color:#16a34a">~0.9s</div><div style="font-size:10.5px;color:#a1a1aa">LCP</div></div>
+      <span style="flex:none;font-size:11.5px;color:#71717a;width:80px;text-align:right">Low effort</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid #f4f4f5;flex-wrap:wrap">
+      <span style="flex:none;width:24px;height:24px;border-radius:7px;border:1.5px solid #e4e4e7;display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:12px;font-weight:600;color:#a1a1aa">3</span>
+      <div style="flex:1;min-width:220px"><div style="font-size:14px;font-weight:600">Code-split and drop unused JavaScript</div><div style="font-size:12.5px;color:#71717a;margin-top:2px">Ship only what each route needs</div></div>
+      <span style="flex:none;font-size:11px;font-weight:600;padding:4px 11px;border-radius:999px;background:#fffbeb;border:1px solid #fde68a;color:#b45309">Medium Impact</span>
+      <div style="flex:none;width:80px;text-align:right"><div style="font-family:'Geist Mono',monospace;font-size:13.5px;font-weight:600;color:#16a34a">~0.6s</div><div style="font-size:10.5px;color:#a1a1aa">TBT</div></div>
+      <span style="flex:none;font-size:11.5px;color:#71717a;width:80px;text-align:right">Medium effort</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;border-bottom:1px solid #f4f4f5;flex-wrap:wrap">
+      <span style="flex:none;width:24px;height:24px;border-radius:7px;border:1.5px solid #e4e4e7;display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:12px;font-weight:600;color:#a1a1aa">4</span>
+      <div style="flex:1;min-width:220px"><div style="font-size:14px;font-weight:600">Lazy-load third-party scripts</div><div style="font-size:12.5px;color:#71717a;margin-top:2px">Defer analytics &amp; chat until interaction</div></div>
+      <span style="flex:none;font-size:11px;font-weight:600;padding:4px 11px;border-radius:999px;background:#ecfdf5;border:1px solid #bbf7d0;color:#15803d">Quick Win</span>
+      <div style="flex:none;width:80px;text-align:right"><div style="font-family:'Geist Mono',monospace;font-size:13.5px;font-weight:600;color:#16a34a">~0.3s</div><div style="font-size:10.5px;color:#a1a1aa">TBT</div></div>
+      <span style="flex:none;font-size:11.5px;color:#71717a;width:80px;text-align:right">Low effort</span>
+    </div>
+
+    <div style="display:flex;align-items:center;gap:16px;padding:16px 20px;flex-wrap:wrap">
+      <span style="flex:none;width:24px;height:24px;border-radius:7px;border:1.5px solid #e4e4e7;display:flex;align-items:center;justify-content:center;font-family:'Geist Mono',monospace;font-size:12px;font-weight:600;color:#a1a1aa">5</span>
+      <div style="flex:1;min-width:220px"><div style="font-size:14px;font-weight:600">Add long cache lifetimes to static assets</div><div style="font-size:12.5px;color:#71717a;margin-top:2px">Speeds up repeat visits significantly</div></div>
+      <span style="flex:none;font-size:11px;font-weight:600;padding:4px 11px;border-radius:999px;background:#f5f5f7;border:1px solid #e4e4e7;color:#52525b">Long Term</span>
+      <div style="flex:none;width:80px;text-align:right"><div style="font-family:'Geist Mono',monospace;font-size:13.5px;font-weight:600;color:#71717a">repeat</div><div style="font-size:10.5px;color:#a1a1aa">visits</div></div>
+      <span style="flex:none;font-size:11.5px;color:#71717a;width:80px;text-align:right">Low effort</span>
+    </div>
+
+  </div>
+
+  <!-- Resource breakdown -->
+  <div style="display:flex;align-items:baseline;justify-content:space-between;margin:44px 4px 16px">
+    <h2 style="font-size:15px;font-weight:600;letter-spacing:-0.01em;margin:0">Resource breakdown</h2>
+    <span style="font-size:12px;color:#a1a1aa;font-family:'Geist Mono',monospace">by load contribution</span>
+  </div>
+  <div style="background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);overflow:hidden">
+    <div style="overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:13.5px;min-width:640px">
+        <thead>
+          <tr style="background:#fafafa;border-bottom:1px solid #ececec">
+            <th style="text-align:left;font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;padding:12px 20px">Category</th>
+            <th style="text-align:left;font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;padding:12px 20px">Resource</th>
+            <th style="text-align:right;font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;padding:12px 20px">Transfer</th>
+            <th style="text-align:left;font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;padding:12px 20px">Load contribution</th>
+            <th style="text-align:left;font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa;padding:12px 20px">Optimization</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr style="border-bottom:1px solid #f4f4f5">
+            <td style="padding:14px 20px"><span style="display:inline-flex;align-items:center;gap:8px;color:#3f3f46"><span style="width:7px;height:7px;border-radius:2px;background:#e35a2a"></span>Images</span></td>
+            <td style="padding:14px 20px;font-family:'Geist Mono',monospace;color:#18181b">hero.jpg</td>
+            <td style="padding:14px 20px;font-family:'Geist Mono',monospace;text-align:right;font-weight:600">1.4 MB</td>
+            <td style="padding:14px 20px"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1;max-width:120px;height:6px;background:#f0f0f1;border-radius:3px;overflow:hidden"><div style="width:46%;height:100%;background:#e35a2a;border-radius:3px"></div></div><span style="font-family:'Geist Mono',monospace;font-size:12px;color:#71717a">46%</span></div></td>
+            <td style="padding:14px 20px;color:#71717a">Convert to AVIF, resize</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f4f4f5">
+            <td style="padding:14px 20px"><span style="display:inline-flex;align-items:center;gap:8px;color:#3f3f46"><span style="width:7px;height:7px;border-radius:2px;background:#a1a1aa"></span>JavaScript</span></td>
+            <td style="padding:14px 20px;font-family:'Geist Mono',monospace;color:#18181b">vendor.js</td>
+            <td style="padding:14px 20px;font-family:'Geist Mono',monospace;text-align:right;font-weight:600">412 KB</td>
+            <td style="padding:14px 20px"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1;max-width:120px;height:6px;background:#f0f0f1;border-radius:3px;overflow:hidden"><div style="width:14%;height:100%;background:#e35a2a;border-radius:3px"></div></div><span style="font-family:'Geist Mono',monospace;font-size:12px;color:#71717a">14%</span></div></td>
+            <td style="padding:14px 20px;color:#71717a">Code-split, tree-shake</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f4f4f5">
+            <td style="padding:14px 20px"><span style="display:inline-flex;align-items:center;gap:8px;color:#3f3f46"><span style="width:7px;height:7px;border-radius:2px;background:#e35a2a"></span>Images</span></td>
+            <td style="padding:14px 20px;font-family:'Geist Mono',monospace;color:#18181b">banner.png</td>
+            <td style="padding:14px 20px;font-family:'Geist Mono',monospace;text-align:right;font-weight:600">420 KB</td>
+            <td style="padding:14px 20px"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1;max-width:120px;height:6px;background:#f0f0f1;border-radius:3px;overflow:hidden"><div style="width:14%;height:100%;background:#e35a2a;border-radius:3px"></div></div><span style="font-family:'Geist Mono',monospace;font-size:12px;color:#71717a">14%</span></div></td>
+            <td style="padding:14px 20px;color:#71717a">Compress, use WebP</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f4f4f5">
+            <td style="padding:14px 20px"><span style="display:inline-flex;align-items:center;gap:8px;color:#3f3f46"><span style="width:7px;height:7px;border-radius:2px;background:#a1a1aa"></span>JavaScript</span></td>
+            <td style="padding:14px 20px;font-family:'Geist Mono',monospace;color:#18181b">app.js</td>
+            <td style="padding:14px 20px;font-family:'Geist Mono',monospace;text-align:right;font-weight:600">286 KB</td>
+            <td style="padding:14px 20px"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1;max-width:120px;height:6px;background:#f0f0f1;border-radius:3px;overflow:hidden"><div style="width:9%;height:100%;background:#e35a2a;border-radius:3px"></div></div><span style="font-family:'Geist Mono',monospace;font-size:12px;color:#71717a">9%</span></div></td>
+            <td style="padding:14px 20px;color:#71717a">Remove dead code</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f4f4f5">
+            <td style="padding:14px 20px"><span style="display:inline-flex;align-items:center;gap:8px;color:#3f3f46"><span style="width:7px;height:7px;border-radius:2px;background:#71717a"></span>Third-party</span></td>
+            <td style="padding:14px 20px;font-family:'Geist Mono',monospace;color:#18181b">analytics.js</td>
+            <td style="padding:14px 20px;font-family:'Geist Mono',monospace;text-align:right;font-weight:600">240 KB</td>
+            <td style="padding:14px 20px"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1;max-width:120px;height:6px;background:#f0f0f1;border-radius:3px;overflow:hidden"><div style="width:8%;height:100%;background:#e35a2a;border-radius:3px"></div></div><span style="font-family:'Geist Mono',monospace;font-size:12px;color:#71717a">8%</span></div></td>
+            <td style="padding:14px 20px;color:#71717a">Defer / facade</td>
+          </tr>
+          <tr style="border-bottom:1px solid #f4f4f5">
+            <td style="padding:14px 20px"><span style="display:inline-flex;align-items:center;gap:8px;color:#3f3f46"><span style="width:7px;height:7px;border-radius:2px;background:#c4c4c8"></span>CSS</span></td>
+            <td style="padding:14px 20px;font-family:'Geist Mono',monospace;color:#18181b">vendor.css</td>
+            <td style="padding:14px 20px;font-family:'Geist Mono',monospace;text-align:right;font-weight:600">61 KB</td>
+            <td style="padding:14px 20px"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1;max-width:120px;height:6px;background:#f0f0f1;border-radius:3px;overflow:hidden"><div style="width:5%;height:100%;background:#e35a2a;border-radius:3px"></div></div><span style="font-family:'Geist Mono',monospace;font-size:12px;color:#71717a">5%</span></div></td>
+            <td style="padding:14px 20px;color:#71717a">Purge unused</td>
+          </tr>
+          <tr>
+            <td style="padding:14px 20px"><span style="display:inline-flex;align-items:center;gap:8px;color:#3f3f46"><span style="width:7px;height:7px;border-radius:2px;background:#d4d4d8"></span>Fonts</span></td>
+            <td style="padding:14px 20px;font-family:'Geist Mono',monospace;color:#18181b">inter-var.woff2</td>
+            <td style="padding:14px 20px;font-family:'Geist Mono',monospace;text-align:right;font-weight:600">92 KB</td>
+            <td style="padding:14px 20px"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1;max-width:120px;height:6px;background:#f0f0f1;border-radius:3px;overflow:hidden"><div style="width:3%;height:100%;background:#e35a2a;border-radius:3px"></div></div><span style="font-family:'Geist Mono',monospace;font-size:12px;color:#71717a">3%</span></div></td>
+            <td style="padding:14px 20px;color:#71717a">Subset, preload</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Diagnostics -->
+  <div style="display:flex;align-items:baseline;justify-content:space-between;margin:44px 4px 16px">
+    <h2 style="font-size:14px;font-weight:600;letter-spacing:-0.01em;margin:0;color:#52525b">Diagnostics</h2>
+    <span style="font-size:12px;color:#a1a1aa;font-family:'Geist Mono',monospace">supporting metrics</span>
+  </div>
+  <div style="border:1px solid #eeeeef;border-radius:16px;overflow:hidden;background:#f7f7f8;display:grid;grid-template-columns:repeat(3,1fr)">
+    <div style="padding:18px 22px;border-right:1px solid #eaeaeb;border-bottom:1px solid #eaeaeb"><div style="font-size:11.5px;color:#71717a;margin-bottom:6px">Time to First Byte</div><div style="font-family:'Geist Mono',monospace;font-size:22px;font-weight:600;letter-spacing:-0.02em">0.6<span style="font-size:13px;color:#a1a1aa">s</span></div></div>
+    <div style="padding:18px 22px;border-right:1px solid #eaeaeb;border-bottom:1px solid #eaeaeb"><div style="font-size:11.5px;color:#71717a;margin-bottom:6px">Time to Interactive</div><div style="font-family:'Geist Mono',monospace;font-size:22px;font-weight:600;letter-spacing:-0.02em">5.2<span style="font-size:13px;color:#a1a1aa">s</span></div></div>
+    <div style="padding:18px 22px;border-bottom:1px solid #eaeaeb"><div style="font-size:11.5px;color:#71717a;margin-bottom:6px">DOM Size</div><div style="font-family:'Geist Mono',monospace;font-size:22px;font-weight:600;letter-spacing:-0.02em">1,842<span style="font-size:13px;color:#a1a1aa"> nodes</span></div></div>
+    <div style="padding:18px 22px;border-right:1px solid #eaeaeb"><div style="font-size:11.5px;color:#71717a;margin-bottom:6px">Network Requests</div><div style="font-family:'Geist Mono',monospace;font-size:22px;font-weight:600;letter-spacing:-0.02em">76</div></div>
+    <div style="padding:18px 22px;border-right:1px solid #eaeaeb"><div style="font-size:11.5px;color:#71717a;margin-bottom:6px">Transfer Size</div><div style="font-family:'Geist Mono',monospace;font-size:22px;font-weight:600;letter-spacing:-0.02em">2.6<span style="font-size:13px;color:#a1a1aa"> MB</span></div></div>
+    <div style="padding:18px 22px"><div style="font-size:11.5px;color:#71717a;margin-bottom:6px">Main-Thread Work</div><div style="font-family:'Geist Mono',monospace;font-size:22px;font-weight:600;letter-spacing:-0.02em">3.8<span style="font-size:13px;color:#a1a1aa">s</span></div></div>
+  </div>
+
+  <div style="text-align:center;margin-top:40px;font-size:12px;color:#c4c4c8;font-family:'Geist Mono',monospace">Lab data collected with Lighthouse · Field data not available for this URL</div>
+
+  </div></sc-if>
+
+  <sc-if value="{{ isHistory }}"><div>
+
+    <button onClick="{{ goDashboard }}" style="display:inline-flex;align-items:center;gap:6px;background:transparent;border:none;color:#71717a;font-size:13px;font-weight:500;cursor:pointer;padding:6px 0;margin-bottom:14px" style-hover="color:#e35a2a">
+      <span style="font-size:15px">←</span> Back to report
+    </button>
+
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:26px">
+      <div>
+        <h1 style="font-size:26px;font-weight:600;letter-spacing:-0.02em;margin:0 0 6px">Audit history</h1>
+        <p style="font-size:14.5px;color:#71717a;margin:0;font-family:'Geist Mono',monospace">acme-store.com · Mobile · last 8 runs</p>
+      </div>
+      <button onClick="{{ goDashboard }}" style="height:42px;background:#e35a2a;border:none;color:#fff;font-size:14px;font-weight:600;padding:0 20px;border-radius:11px;cursor:pointer;box-shadow:0 1px 2px rgba(227,90,42,0.35);display:flex;align-items:center;gap:8px" style-hover="background:#cc4d20">
+        <span style="font-size:16px;line-height:1">+</span> New audit
+      </button>
+    </div>
+
+    <!-- Summary tiles -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:28px">
+      <div style="background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);padding:18px 20px">
+        <div style="font-size:11.5px;color:#71717a;margin-bottom:8px">Latest score</div>
+        <div style="display:flex;align-items:center;gap:8px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></span><span style="font-family:'Geist Mono',monospace;font-size:26px;font-weight:600;letter-spacing:-0.02em">64</span></div>
+      </div>
+      <div style="background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);padding:18px 20px">
+        <div style="font-size:11.5px;color:#71717a;margin-bottom:8px">Best score</div>
+        <div style="font-family:'Geist Mono',monospace;font-size:26px;font-weight:600;letter-spacing:-0.02em">64</div>
+      </div>
+      <div style="background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);padding:18px 20px">
+        <div style="font-size:11.5px;color:#71717a;margin-bottom:8px">Average</div>
+        <div style="font-family:'Geist Mono',monospace;font-size:26px;font-weight:600;letter-spacing:-0.02em">55</div>
+      </div>
+      <div style="background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);padding:18px 20px">
+        <div style="font-size:11.5px;color:#71717a;margin-bottom:8px">50-day change</div>
+        <div style="display:flex;align-items:baseline;gap:4px"><span style="font-family:'Geist Mono',monospace;font-size:26px;font-weight:600;letter-spacing:-0.02em;color:#16a34a">+17</span><span style="font-size:13px;color:#16a34a">▲</span></div>
+      </div>
+    </div>
+
+    <!-- Trend chart -->
+    <div style="background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);padding:24px 24px 18px;margin-bottom:12px">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap;gap:12px">
+        <div>
+          <div style="font-size:15px;font-weight:600;letter-spacing:-0.01em">Performance score over time</div>
+          <div style="font-size:12.5px;color:#a1a1aa;margin-top:2px">May 13 – Jul 2, 2026</div>
+        </div>
+        <div style="display:inline-flex;background:#f0f0f1;border-radius:9px;padding:3px">
+          <span style="padding:6px 14px;border-radius:7px;font-size:12.5px;font-weight:600;background:#fff;color:#18181b;box-shadow:0 1px 2px rgba(0,0,0,0.08)">Score</span>
+          <span style="padding:6px 14px;border-radius:7px;font-size:12.5px;font-weight:500;color:#a1a1aa">LCP</span>
+          <span style="padding:6px 14px;border-radius:7px;font-size:12.5px;font-weight:500;color:#a1a1aa">INP</span>
+        </div>
+      </div>
+      <svg viewBox="0 0 760 244" style="width:100%;height:auto;display:block" font-family="'Geist Mono',monospace">
+        <rect x="50" y="30" width="690" height="113.3" fill="rgba(245,158,11,0.05)"></rect>
+        <rect x="50" y="143.3" width="690" height="56.7" fill="rgba(239,68,68,0.05)"></rect>
+        <line x1="50" y1="30" x2="740" y2="30" stroke="#f0f0f1" stroke-width="1"></line>
+        <line x1="50" y1="86.7" x2="740" y2="86.7" stroke="#f0f0f1" stroke-width="1"></line>
+        <line x1="50" y1="143.3" x2="740" y2="143.3" stroke="#f0f0f1" stroke-width="1"></line>
+        <line x1="50" y1="200" x2="740" y2="200" stroke="#e4e4e7" stroke-width="1"></line>
+        <text x="40" y="33" text-anchor="end" font-size="10" fill="#a1a1aa">70</text>
+        <text x="40" y="90" text-anchor="end" font-size="10" fill="#a1a1aa">60</text>
+        <text x="40" y="146" text-anchor="end" font-size="10" fill="#a1a1aa">50</text>
+        <text x="40" y="203" text-anchor="end" font-size="10" fill="#a1a1aa">40</text>
+        <path d="M50,160 L149,149 L247,132 L346,104 L444,121 L543,98 L641,81 L740,64 L740,200 L50,200 Z" fill="rgba(227,90,42,0.08)"></path>
+        <polyline points="50,160 149,149 247,132 346,104 444,121 543,98 641,81 740,64" fill="none" stroke="#e35a2a" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"></polyline>
+        <circle cx="50" cy="160" r="4" fill="#fff" stroke="#e35a2a" stroke-width="2"></circle>
+        <circle cx="149" cy="149" r="4" fill="#fff" stroke="#e35a2a" stroke-width="2"></circle>
+        <circle cx="247" cy="132" r="4" fill="#fff" stroke="#e35a2a" stroke-width="2"></circle>
+        <circle cx="346" cy="104" r="4" fill="#fff" stroke="#e35a2a" stroke-width="2"></circle>
+        <circle cx="444" cy="121" r="4" fill="#fff" stroke="#e35a2a" stroke-width="2"></circle>
+        <circle cx="543" cy="98" r="4" fill="#fff" stroke="#e35a2a" stroke-width="2"></circle>
+        <circle cx="641" cy="81" r="4" fill="#fff" stroke="#e35a2a" stroke-width="2"></circle>
+        <circle cx="740" cy="64" r="5.5" fill="#e35a2a"></circle>
+        <text x="740" y="50" text-anchor="middle" font-size="12" font-weight="600" fill="#18181b">64</text>
+        <text x="50" y="222" text-anchor="middle" font-size="9.5" fill="#a1a1aa">5/13</text>
+        <text x="149" y="222" text-anchor="middle" font-size="9.5" fill="#a1a1aa">5/20</text>
+        <text x="247" y="222" text-anchor="middle" font-size="9.5" fill="#a1a1aa">5/27</text>
+        <text x="346" y="222" text-anchor="middle" font-size="9.5" fill="#a1a1aa">6/3</text>
+        <text x="444" y="222" text-anchor="middle" font-size="9.5" fill="#a1a1aa">6/10</text>
+        <text x="543" y="222" text-anchor="middle" font-size="9.5" fill="#a1a1aa">6/18</text>
+        <text x="641" y="222" text-anchor="middle" font-size="9.5" fill="#a1a1aa">6/25</text>
+        <text x="740" y="222" text-anchor="middle" font-size="9.5" fill="#a1a1aa">7/2</text>
+      </svg>
+    </div>
+
+    <!-- Runs table -->
+    <div style="display:flex;align-items:baseline;justify-content:space-between;margin:32px 4px 16px">
+      <h2 style="font-size:15px;font-weight:600;letter-spacing:-0.01em;margin:0">All runs</h2>
+      <span style="font-size:12px;color:#a1a1aa;font-family:'Geist Mono',monospace">newest first · click to open</span>
+    </div>
+    <div style="background:#fff;border:1px solid #ececec;border-radius:16px;box-shadow:0 1px 2px rgba(0,0,0,0.04);overflow:hidden">
+      <div style="overflow-x:auto">
+        <div style="min-width:720px">
+          <div style="display:grid;grid-template-columns:130px 92px 168px 1fr 1fr 1fr 24px;gap:12px;align-items:center;padding:12px 20px;background:#fafafa;border-bottom:1px solid #ececec;font-size:10.5px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#a1a1aa">
+            <span>Date</span><span>Device</span><span>Score</span><span>LCP</span><span>INP</span><span>CLS</span><span></span>
+          </div>
+
+          <button onClick="{{ goDashboard }}" style="width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid #f4f4f5;cursor:pointer;display:grid;grid-template-columns:130px 92px 168px 1fr 1fr 1fr 24px;gap:12px;align-items:center;padding:15px 20px;font-size:13.5px" style-hover="background:#fcfcfc">
+            <span style="font-family:'Geist Mono',monospace;color:#18181b">Jul 2, 2026</span>
+            <span style="justify-self:start;font-size:11px;font-weight:500;color:#52525b;background:#f4f4f5;border-radius:999px;padding:3px 9px">Mobile</span>
+            <span style="display:inline-flex;align-items:center;gap:9px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></span><span style="font-family:'Geist Mono',monospace;font-size:15px;font-weight:600">64</span><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#16a34a">▲3</span></span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">3.4s</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">240ms</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">0.05</span>
+            <span style="color:#c4c4c8;font-size:18px;justify-self:end">›</span>
+          </button>
+
+          <button onClick="{{ goDashboard }}" style="width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid #f4f4f5;cursor:pointer;display:grid;grid-template-columns:130px 92px 168px 1fr 1fr 1fr 24px;gap:12px;align-items:center;padding:15px 20px;font-size:13.5px" style-hover="background:#fcfcfc">
+            <span style="font-family:'Geist Mono',monospace;color:#18181b">Jun 25, 2026</span>
+            <span style="justify-self:start;font-size:11px;font-weight:500;color:#52525b;background:#f4f4f5;border-radius:999px;padding:3px 9px">Mobile</span>
+            <span style="display:inline-flex;align-items:center;gap:9px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></span><span style="font-family:'Geist Mono',monospace;font-size:15px;font-weight:600">61</span><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#16a34a">▲3</span></span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">3.6s</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">250ms</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">0.06</span>
+            <span style="color:#c4c4c8;font-size:18px;justify-self:end">›</span>
+          </button>
+
+          <button onClick="{{ goDashboard }}" style="width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid #f4f4f5;cursor:pointer;display:grid;grid-template-columns:130px 92px 168px 1fr 1fr 1fr 24px;gap:12px;align-items:center;padding:15px 20px;font-size:13.5px" style-hover="background:#fcfcfc">
+            <span style="font-family:'Geist Mono',monospace;color:#18181b">Jun 18, 2026</span>
+            <span style="justify-self:start;font-size:11px;font-weight:500;color:#52525b;background:#f4f4f5;border-radius:999px;padding:3px 9px">Mobile</span>
+            <span style="display:inline-flex;align-items:center;gap:9px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></span><span style="font-family:'Geist Mono',monospace;font-size:15px;font-weight:600">58</span><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#16a34a">▲4</span></span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">3.8s</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">270ms</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">0.07</span>
+            <span style="color:#c4c4c8;font-size:18px;justify-self:end">›</span>
+          </button>
+
+          <button onClick="{{ goDashboard }}" style="width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid #f4f4f5;cursor:pointer;display:grid;grid-template-columns:130px 92px 168px 1fr 1fr 1fr 24px;gap:12px;align-items:center;padding:15px 20px;font-size:13.5px" style-hover="background:#fcfcfc">
+            <span style="font-family:'Geist Mono',monospace;color:#18181b">Jun 10, 2026</span>
+            <span style="justify-self:start;font-size:11px;font-weight:500;color:#52525b;background:#f4f4f5;border-radius:999px;padding:3px 9px">Mobile</span>
+            <span style="display:inline-flex;align-items:center;gap:9px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></span><span style="font-family:'Geist Mono',monospace;font-size:15px;font-weight:600">54</span><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#dc2626">▼3</span></span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">4.1s</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">300ms</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">0.09</span>
+            <span style="color:#c4c4c8;font-size:18px;justify-self:end">›</span>
+          </button>
+
+          <button onClick="{{ goDashboard }}" style="width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid #f4f4f5;cursor:pointer;display:grid;grid-template-columns:130px 92px 168px 1fr 1fr 1fr 24px;gap:12px;align-items:center;padding:15px 20px;font-size:13.5px" style-hover="background:#fcfcfc">
+            <span style="font-family:'Geist Mono',monospace;color:#18181b">Jun 3, 2026</span>
+            <span style="justify-self:start;font-size:11px;font-weight:500;color:#52525b;background:#f4f4f5;border-radius:999px;padding:3px 9px">Mobile</span>
+            <span style="display:inline-flex;align-items:center;gap:9px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></span><span style="font-family:'Geist Mono',monospace;font-size:15px;font-weight:600">57</span><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#16a34a">▲5</span></span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">3.9s</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">280ms</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">0.08</span>
+            <span style="color:#c4c4c8;font-size:18px;justify-self:end">›</span>
+          </button>
+
+          <button onClick="{{ goDashboard }}" style="width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid #f4f4f5;cursor:pointer;display:grid;grid-template-columns:130px 92px 168px 1fr 1fr 1fr 24px;gap:12px;align-items:center;padding:15px 20px;font-size:13.5px" style-hover="background:#fcfcfc">
+            <span style="font-family:'Geist Mono',monospace;color:#18181b">May 27, 2026</span>
+            <span style="justify-self:start;font-size:11px;font-weight:500;color:#52525b;background:#f4f4f5;border-radius:999px;padding:3px 9px">Mobile</span>
+            <span style="display:inline-flex;align-items:center;gap:9px"><span style="width:8px;height:8px;border-radius:50%;background:#f59e0b"></span><span style="font-family:'Geist Mono',monospace;font-size:15px;font-weight:600">52</span><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#16a34a">▲3</span></span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">4.3s</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">320ms</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">0.10</span>
+            <span style="color:#c4c4c8;font-size:18px;justify-self:end">›</span>
+          </button>
+
+          <button onClick="{{ goDashboard }}" style="width:100%;text-align:left;background:transparent;border:none;border-bottom:1px solid #f4f4f5;cursor:pointer;display:grid;grid-template-columns:130px 92px 168px 1fr 1fr 1fr 24px;gap:12px;align-items:center;padding:15px 20px;font-size:13.5px" style-hover="background:#fcfcfc">
+            <span style="font-family:'Geist Mono',monospace;color:#18181b">May 20, 2026</span>
+            <span style="justify-self:start;font-size:11px;font-weight:500;color:#52525b;background:#f4f4f5;border-radius:999px;padding:3px 9px">Mobile</span>
+            <span style="display:inline-flex;align-items:center;gap:9px"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444"></span><span style="font-family:'Geist Mono',monospace;font-size:15px;font-weight:600">49</span><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#16a34a">▲2</span></span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">4.6s</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">350ms</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">0.12</span>
+            <span style="color:#c4c4c8;font-size:18px;justify-self:end">›</span>
+          </button>
+
+          <button onClick="{{ goDashboard }}" style="width:100%;text-align:left;background:transparent;border:none;cursor:pointer;display:grid;grid-template-columns:130px 92px 168px 1fr 1fr 1fr 24px;gap:12px;align-items:center;padding:15px 20px;font-size:13.5px" style-hover="background:#fcfcfc">
+            <span style="font-family:'Geist Mono',monospace;color:#18181b">May 13, 2026</span>
+            <span style="justify-self:start;font-size:11px;font-weight:500;color:#52525b;background:#f4f4f5;border-radius:999px;padding:3px 9px">Mobile</span>
+            <span style="display:inline-flex;align-items:center;gap:9px"><span style="width:8px;height:8px;border-radius:50%;background:#ef4444"></span><span style="font-family:'Geist Mono',monospace;font-size:15px;font-weight:600">47</span><span style="font-family:'Geist Mono',monospace;font-size:11px;color:#a1a1aa">—</span></span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">4.8s</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">380ms</span>
+            <span style="font-family:'Geist Mono',monospace;color:#52525b">0.14</span>
+            <span style="color:#c4c4c8;font-size:18px;justify-self:end">›</span>
+          </button>
+
+        </div>
+      </div>
+    </div>
+
+  </div></sc-if>
+
+</main>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props="{&quot;countUp&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:true,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;},&quot;expandFirstIssue&quot;:{&quot;editor&quot;:&quot;boolean&quot;,&quot;default&quot;:false,&quot;tsType&quot;:&quot;boolean&quot;,&quot;section&quot;:&quot;Behavior&quot;}}">
+class Component extends DCLogic {
+  state = { score: 0, device: 'mobile', open: {}, hover: null, view: 'dashboard' };
+
+  componentDidMount() {
+    if (this.props.expandFirstIssue ?? false) {
+      this.setState({ open: { rbr: true } });
+    }
+    const animate = this.props.countUp ?? true;
+    const target = 64;
+    if (!animate) { this.setState({ score: target }); return; }
+    const dur = 1100, start = performance.now();
+    const step = (t) => {
+      const p = Math.min(1, (t - start) / dur);
+      const e = 1 - Math.pow(1 - p, 3);
+      this.setState({ score: Math.round(e * target) });
+      if (p < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  toggleIssue = (e) => {
+    const id = e.currentTarget.dataset.id;
+    this.setState(s => ({ open: { ...s.open, [id]: !s.open[id] } }));
+  };
+  onEnter = (e) => { this.setState({ hover: e.currentTarget.dataset.metric }); };
+  onLeave = () => { this.setState({ hover: null }); };
+  setDevice = (e) => { this.setState({ device: e.currentTarget.dataset.device }); };
+  goHistory = () => { this.setState({ view: 'history' }); window.scrollTo(0, 0); };
+  goDashboard = () => { this.setState({ view: 'dashboard' }); window.scrollTo(0, 0); };
+
+  renderVals() {
+    const s = this.state;
+    const issueIds = ['rbr', 'img', 'ujs', 'mtw', 'tps', 'ucss'];
+    const open = {}, closed = {};
+    issueIds.forEach(id => { open[id] = !!s.open[id]; closed[id] = !s.open[id]; });
+    const metricIds = ['lcp', 'inp', 'cls', 'tbt', 'si', 'fcp'];
+    const hover = {};
+    metricIds.forEach(m => { hover[m] = s.hover === m; });
+    return {
+      scoreText: String(s.score),
+      open, closed, hover,
+      isDesktop: s.device === 'desktop',
+      isMobile: s.device === 'mobile',
+      isDashboard: s.view === 'dashboard',
+      isHistory: s.view === 'history',
+      toggleIssue: this.toggleIssue,
+      onEnter: this.onEnter,
+      onLeave: this.onLeave,
+      setDevice: this.setDevice,
+      goHistory: this.goHistory,
+      goDashboard: this.goDashboard,
+    };
+  }
+}
+</script>
+</body>
+</html>

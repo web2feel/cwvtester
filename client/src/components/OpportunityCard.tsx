@@ -19,7 +19,7 @@ export function OpportunityCard({ opportunity, open, onToggle }: OpportunityCard
       className="overflow-hidden rounded-[14px] border border-border-card bg-white shadow-card"
       style={{ borderLeft: `3px solid ${style.border}` }}
     >
-      <button onClick={onToggle} className="flex w-full items-center gap-4 p-[18px_20px] text-left hover:bg-[#fcfcfc]">
+      <button type="button" onClick={onToggle} aria-expanded={open} aria-controls={`opp-panel-${opportunity.id}`} className="flex w-full items-center gap-4 p-[18px_20px] text-left hover:bg-[#fcfcfc]">
         <span
           className="inline-flex flex-none items-center gap-1.5 rounded-pill px-[9px] py-1 text-[10.5px] font-semibold uppercase tracking-[0.03em]"
           style={{ background: style.pillBg, borderWidth: 1, borderColor: style.pillBorder, color: style.pillText }}
@@ -40,7 +40,7 @@ export function OpportunityCard({ opportunity, open, onToggle }: OpportunityCard
         </span>
       </button>
       {open && (
-        <div className="animate-fadeIn border-t border-border-inner p-[0_20px_20px]">
+        <div id={`opp-panel-${opportunity.id}`} className="animate-fadeIn border-t border-border-inner p-[0_20px_20px]">
           <div className="grid grid-cols-2 gap-[20px_36px] pt-[18px] max-sm:grid-cols-1">
             <div>
               <div className="mb-1.5 text-[10.5px] font-semibold uppercase tracking-[0.04em] text-text-faint">
