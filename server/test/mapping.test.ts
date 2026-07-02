@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   buildSummary,
+  getLhrRuntimeError,
   getMetricStatus,
   getScoreStatus,
   mapAllMetrics,
@@ -9,6 +10,29 @@ import {
   mapMetric,
   mapOpportunities,
 } from '../src/mapping';
+
+describe('getLhrRuntimeError', () => {
+  it('returns the message when runtimeError has a real code', () => {
+    const lhr = {
+      runtimeError: { code: 'DNS_FAILURE', message: 'DNS servers could not resolve the provided domain.' },
+    };
+    expect(getLhrRuntimeError(lhr)).toBe('DNS servers could not resolve the provided domain.');
+  });
+
+  it('returns null when runtimeError is absent', () => {
+    expect(getLhrRuntimeError({})).toBeNull();
+  });
+
+  it('returns null when runtimeError.code is NO_ERROR', () => {
+    const lhr = { runtimeError: { code: 'NO_ERROR', message: '' } };
+    expect(getLhrRuntimeError(lhr)).toBeNull();
+  });
+
+  it('falls back to a generated message when code is set but message is empty', () => {
+    const lhr = { runtimeError: { code: 'NO_FCP', message: '' } };
+    expect(getLhrRuntimeError(lhr)).toBe('Lighthouse could not analyze this page (NO_FCP).');
+  });
+});
 
 describe('getMetricStatus', () => {
   it('classifies LCP against the 2.5s/4s thresholds', () => {

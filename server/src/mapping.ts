@@ -217,6 +217,14 @@ export function buildSummary(
   };
 }
 
+export function getLhrRuntimeError(lhr: any): string | null {
+  const re = lhr?.runtimeError;
+  if (re && re.code && re.code !== 'NO_ERROR') {
+    return typeof re.message === 'string' && re.message.trim() ? re.message : `Lighthouse could not analyze this page (${re.code}).`;
+  }
+  return null;
+}
+
 export function mapLhrToAuditResult(lhr: any, url: string, device: Device): AuditResult {
   const score = Math.round((lhr.categories?.performance?.score ?? 0) * 100);
   const metrics = mapAllMetrics(lhr);

@@ -1,7 +1,7 @@
 import * as chromeLauncher from 'chrome-launcher';
 import { randomUUID } from 'node:crypto';
 import { completeAudit, failAudit, insertAudit, updateStage } from './db';
-import { mapLhrToAuditResult } from './mapping';
+import { getLhrRuntimeError, mapLhrToAuditResult } from './mapping';
 import type { AuditJobStatus, Device } from './types';
 
 interface Job {
@@ -69,6 +69,12 @@ async function runAudit(id: string, url: string, device: Device): Promise<void> 
     const runnerResult = await lighthouse(url, { port: chrome.port, output: 'json' }, LIGHTHOUSE_CONFIG[device]);
     if (!runnerResult?.lhr) throw new Error('Lighthouse produced no report.');
 
+    const runtimeErrorMessage = getLhrRuntimeError(runnerResult.lhr);
+    if (runtimeErrorMessage) {
+      fail(id, classifyError(new Error(runtimeErrorMessage), url));
+      return;
+    }
+
     jobs.set(id, { status: 'running', stage: 'Analyzing performance…' });
     updateStage(id, 'Analyzing performance…');
 
@@ -92,11 +98,26 @@ function fail(id: string, message: string): void {
 
 function classifyError(err: unknown, url: string): string {
   const message = err instanceof Error ? err.message : String(err);
-  if (message.includes('ENOTFOUND') || message.includes('ERR_NAME_NOT_RESOLVED')) {
+  if (
+    message.includes('ENOTFOUND') ||
+    message.includes('ERR_NAME_NOT_RESOLVED') ||
+    message.includes('DNS_FAILURE') ||
+    /\bDNS\b/i.test(message) ||
+    /\bresolve\b/i.test(message)
+  ) {
     return `Could not reach ${url}. Check the URL and try again.`;
   }
   if (message.includes('ERR_CONNECTION_REFUSED')) {
     return `Connection refused by ${url}.`;
+  }
+  if (message.includes('ERRORED_DOCUMENT_REQUEST') || message.includes('FAILED_DOCUMENT_REQUEST')) {
+    return `Could not load ${url}. The site may be down or unreachable.`;
+  }
+  if (message.includes('NO_FCP')) {
+    return `The page at ${url} never rendered any content Lighthouse could measure.`;
+  }
+  if (message.includes('NOT_HTML') || message.includes('non-HTML')) {
+    return `${url} did not return an HTML page.`;
   }
   if (message.toLowerCase().includes('timeout')) {
     return 'The audit timed out. The site may be too slow to respond.';
