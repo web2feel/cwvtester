@@ -1,0 +1,8 @@
+node_modules/
+dist/
+server/data/*.sqlite
+.env
+*.log
+*.tsbuildinfo
+client/vite.config.d.ts
+client/vite.config.js
