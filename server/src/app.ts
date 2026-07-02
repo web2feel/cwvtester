@@ -81,4 +81,10 @@ app.get('/api/audits', (req, res) => {
   res.json({ url, runs });
 });
 
+// Ensure any uncaught error in a route returns a JSON body, not Express's default HTML.
+app.use((err: unknown, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+  const message = err instanceof Error ? err.message : 'Internal server error.';
+  res.status(500).json({ error: message });
+});
+
 export default app;
