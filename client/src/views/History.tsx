@@ -131,7 +131,9 @@ export function History({ onBack, onOpenRun }: HistoryProps) {
                         )}
                       </span>
                       <span className="font-mono text-text-tertiary">{(run.lcp / 1000).toFixed(1)}s</span>
-                      <span className="font-mono text-text-tertiary">{Math.round(run.inp)}ms</span>
+                      <span className="font-mono text-text-tertiary">
+                        {run.inp === 0 ? '—' : `${Math.round(run.inp)}ms`}
+                      </span>
                       <span className="font-mono text-text-tertiary">{run.cls.toFixed(2)}</span>
                       <span className="justify-self-end text-lg text-text-faintest">›</span>
                     </button>
