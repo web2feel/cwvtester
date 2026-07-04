@@ -30,6 +30,18 @@ export function OpportunityCard({ opportunity, open, onToggle }: OpportunityCard
         <div className="min-w-0 flex-1">
           <div className="mb-[3px] text-[14.5px] font-semibold">{opportunity.title}</div>
           <div className="text-[12.5px] text-text-muted">{opportunity.subtitle}</div>
+          {opportunity.affects && opportunity.affects.length > 0 && (
+            <div className="mt-1.5 flex flex-wrap gap-1">
+              {opportunity.affects.map(metric => (
+                <span
+                  key={metric}
+                  className="rounded-pill border border-border-control bg-surface-muted px-1.5 py-px text-[9.5px] font-semibold uppercase tracking-[0.04em] text-text-tertiary"
+                >
+                  {metric}
+                </span>
+              ))}
+            </div>
+          )}
         </div>
         <div className="flex-none text-right">
           <div className="font-mono text-base font-semibold text-good-dot">{opportunity.savingsDisplay}</div>
