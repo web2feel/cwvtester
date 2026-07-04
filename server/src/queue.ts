@@ -32,6 +32,10 @@ export function createQueue(): SerialQueue {
 
 export async function withTimeout<T>(promise: Promise<T>, ms: number, message: string): Promise<T> {
   let timer: ReturnType<typeof setTimeout>;
+  // If the timeout wins the race, the losing promise may still reject later
+  // (e.g. after resources it depends on are torn down). Attach a no-op
+  // handler so that late rejection can't crash the process as unhandled.
+  promise.catch(() => {});
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error(message)), ms);
   });

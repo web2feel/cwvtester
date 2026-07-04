@@ -65,4 +65,21 @@ describe('withTimeout', () => {
       'The audit timed out after 90 seconds.'
     );
   });
+
+  it('does not leave an unhandled rejection when the losing promise rejects after timeout', async () => {
+    let rejectLater!: (e: Error) => void;
+    const slow = new Promise<void>((_, reject) => {
+      rejectLater = reject;
+    });
+    await expect(withTimeout(slow, 10, 'timed out')).rejects.toThrow('timed out');
+    rejectLater(new Error('late failure'));
+    // Give the event loop a tick; Vitest fails the run on unhandled rejections.
+    await new Promise(r => setTimeout(r, 10));
+  });
+
+  it('still rejects with the original error when the promise rejects before the deadline', async () => {
+    await expect(withTimeout(Promise.reject(new Error('real failure')), 1000, 'too slow')).rejects.toThrow(
+      'real failure'
+    );
+  });
 });
