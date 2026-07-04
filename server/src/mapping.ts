@@ -67,6 +67,22 @@ function stripMarkdownLinks(text: string): string {
   return text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').trim();
 }
 
+export function resourceDisplayName(resourceUrl: string, pageUrl: string): string {
+  try {
+    const resource = new URL(resourceUrl);
+    const file = resource.pathname.split('/').filter(Boolean).pop() || resource.hostname;
+    try {
+      const page = new URL(pageUrl);
+      if (resource.origin !== page.origin) return `${resource.hostname} · ${file}`;
+    } catch {
+      // No valid page origin to compare against — plain filename.
+    }
+    return file;
+  } catch {
+    return resourceUrl;
+  }
+}
+
 function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
@@ -136,46 +152,78 @@ export function mapAllMetrics(lhr: any): MetricValue[] {
   return (['lcp', 'inp', 'cls', 'tbt', 'si', 'fcp'] as const).map(id => mapMetric(lhr, id));
 }
 
-function getSeverity(savingsMs: number): 'high' | 'medium' | 'low' {
-  if (savingsMs >= 800) return 'high';
-  if (savingsMs >= 300) return 'medium';
+const BYTE_ONLY_FLOOR = 10 * 1024;
+
+function getSeverity(savingsMs: number, savingsBytes: number): 'high' | 'medium' | 'low' {
+  if (savingsMs > 0) {
+    if (savingsMs >= 800) return 'high';
+    if (savingsMs >= 300) return 'medium';
+    return 'low';
+  }
+  if (savingsBytes >= 500 * 1024) return 'high';
+  if (savingsBytes >= 100 * 1024) return 'medium';
   return 'low';
 }
 
-export function mapOpportunities(lhr: any): Opportunity[] {
+function impactFromMetricSavings(entries: [string, number][]): string {
+  const parts = entries.map(([metric, value]) =>
+    metric === 'CLS' ? `−${round2(value)} CLS` : `~${(value / 1000).toFixed(2)}s faster ${metric}`
+  );
+  return `${parts.join(' · ')}.`;
+}
+
+export function mapOpportunities(lhr: any, pageUrl = ''): Opportunity[] {
   const opportunities: Opportunity[] = [];
   for (const [id, audit] of Object.entries<any>(lhr.audits ?? {})) {
     const details = audit?.details;
     if (!details || details.type !== 'opportunity') continue;
     const savingsMs = Math.round(details.overallSavingsMs ?? 0);
-    if (savingsMs <= 0) continue;
+    const savingsBytes = Math.round(details.overallSavingsBytes ?? 0);
+    if (savingsMs <= 0 && savingsBytes < BYTE_ONLY_FLOOR) continue;
+
+    const metricSavings = audit.metricSavings && typeof audit.metricSavings === 'object' ? audit.metricSavings : null;
+    const affectsEntries: [string, number][] = metricSavings
+      ? Object.entries(metricSavings).filter((e): e is [string, number] => typeof e[1] === 'number' && e[1] > 0)
+      : [];
+    const affects =
+      affectsEntries.length > 0
+        ? affectsEntries.map(([metric]) => metric)
+        : METRIC_FOR_AUDIT[id]
+          ? METRIC_FOR_AUDIT[id].split(' and ')
+          : [];
+
+    let estimatedImpact: string;
+    if (affectsEntries.length > 0) {
+      estimatedImpact = impactFromMetricSavings(affectsEntries);
+    } else if (savingsMs > 0) {
+      estimatedImpact = `~${(savingsMs / 1000).toFixed(2)}s faster ${METRIC_FOR_AUDIT[id] ?? 'load time'}.`;
+    } else {
+      estimatedImpact = `${formatBytes(savingsBytes)} less to download.`;
+    }
+
     const items: any[] = Array.isArray(details.items) ? details.items : [];
-    const affectedResources = items.slice(0, 5).map((item: any) => {
-      let name = 'resource';
-      if (item.url) {
-        try {
-          name = new URL(item.url).pathname.split('/').filter(Boolean).pop() || item.url;
-        } catch {
-          name = item.url;
-        }
-      }
-      return { name, size: item.totalBytes ? formatBytes(item.totalBytes) : '' };
-    });
+    const affectedResources = items.slice(0, 5).map((item: any) => ({
+      name: typeof item.url === 'string' ? resourceDisplayName(item.url, pageUrl) : 'resource',
+      size: item.totalBytes ? formatBytes(item.totalBytes) : '',
+    }));
+
     const description = stripMarkdownLinks(audit.description ?? '');
     const firstSentence = description.split('. ')[0];
     opportunities.push({
       id,
       title: audit.title,
       subtitle: firstSentence.endsWith('.') ? firstSentence : `${firstSentence}.`,
-      severity: getSeverity(savingsMs),
+      severity: getSeverity(savingsMs, savingsBytes),
       savingsMs,
-      savingsDisplay: `−${(savingsMs / 1000).toFixed(2)}s`,
+      savingsDisplay: savingsMs > 0 ? `−${(savingsMs / 1000).toFixed(2)}s` : `−${formatBytes(savingsBytes)}`,
       whyItHurts: description,
-      estimatedImpact: `~${(savingsMs / 1000).toFixed(2)}s faster ${METRIC_FOR_AUDIT[id] ?? 'load time'}.`,
+      estimatedImpact,
       affectedResources,
+      affects,
+      savingsBytes: savingsBytes > 0 ? savingsBytes : undefined,
     });
   }
-  return opportunities.sort((a, b) => b.savingsMs - a.savingsMs);
+  return opportunities.sort((a, b) => b.savingsMs - a.savingsMs || (b.savingsBytes ?? 0) - (a.savingsBytes ?? 0));
 }
 
 export function mapResources(lhr: any): ResourceRow[] {
@@ -255,9 +303,10 @@ export function getLhrRuntimeError(lhr: any): string | null {
 }
 
 export function mapLhrToAuditResult(lhr: any, url: string, device: Device): AuditResult {
+  const pageUrl = typeof lhr.finalDisplayedUrl === 'string' ? lhr.finalDisplayedUrl : url;
   const score = Math.round((lhr.categories?.performance?.score ?? 0) * 100);
   const metrics = mapAllMetrics(lhr);
-  const opportunities = mapOpportunities(lhr);
+  const opportunities = mapOpportunities(lhr, pageUrl);
   const resources = mapResources(lhr);
   const diagnostics = mapDiagnostics(lhr);
   const { sentence, boldValues } = buildSummary(score, device, opportunities);

@@ -10,6 +10,7 @@ import {
   mapLhrToAuditResult,
   mapMetric,
   mapOpportunities,
+  resourceDisplayName,
 } from '../src/mapping';
 import type { MetricValue } from '../src/types';
 
@@ -348,5 +349,136 @@ describe('buildCwvVerdict', () => {
       metricStub('cls', 'CLS', 'good'),
     ]);
     expect(verdict.passes).toBe(true);
+  });
+});
+
+describe('resourceDisplayName', () => {
+  it('returns the filename for same-origin resources', () => {
+    expect(resourceDisplayName('https://example.com/js/app.js', 'https://example.com/')).toBe('app.js');
+  });
+
+  it('prefixes the hostname for cross-origin resources', () => {
+    expect(resourceDisplayName('https://cdn.example.com/js/app.js', 'https://example.com/')).toBe(
+      'cdn.example.com · app.js'
+    );
+  });
+
+  it('falls back to the hostname when the path has no filename', () => {
+    expect(resourceDisplayName('https://cdn.example.com/', 'https://example.com/')).toBe(
+      'cdn.example.com · cdn.example.com'
+    );
+  });
+
+  it('returns the raw string when the resource URL is unparseable', () => {
+    expect(resourceDisplayName('not a url', 'https://example.com/')).toBe('not a url');
+  });
+});
+
+describe('mapOpportunities affects + byte-only', () => {
+  it('derives affects and per-metric impact from metricSavings', () => {
+    const lhr = {
+      audits: {
+        'unused-javascript': {
+          title: 'Reduce unused JavaScript',
+          description: 'Remove dead code.',
+          metricSavings: { LCP: 500, FCP: 100, CLS: 0 },
+          details: { type: 'opportunity', overallSavingsMs: 600, items: [] },
+        },
+      },
+    };
+    const result = mapOpportunities(lhr as any);
+    expect(result[0].affects).toEqual(['LCP', 'FCP']);
+    expect(result[0].estimatedImpact).toBe('~0.50s faster LCP · ~0.10s faster FCP.');
+  });
+
+  it('formats CLS metricSavings in CLS units, not seconds', () => {
+    const lhr = {
+      audits: {
+        'some-cls-fix': {
+          title: 'Fix layout shifts',
+          description: 'Reserve space.',
+          metricSavings: { CLS: 0.12 },
+          details: { type: 'opportunity', overallSavingsMs: 50, items: [] },
+        },
+      },
+    };
+    const result = mapOpportunities(lhr as any);
+    expect(result[0].affects).toEqual(['CLS']);
+    expect(result[0].estimatedImpact).toBe('−0.12 CLS.');
+  });
+
+  it('falls back to the audit lookup table when metricSavings is absent', () => {
+    const lhr = {
+      audits: {
+        'render-blocking-resources': {
+          title: 'Eliminate render-blocking resources',
+          description: 'Blocking render.',
+          details: { type: 'opportunity', overallSavingsMs: 500, items: [] },
+        },
+      },
+    };
+    const result = mapOpportunities(lhr as any);
+    expect(result[0].affects).toEqual(['FCP', 'LCP']);
+  });
+
+  it('includes byte-only opportunities above the 10 KB floor with byte severity and display', () => {
+    const lhr = {
+      audits: {
+        'big-bytes': {
+          title: 'Serve smaller payloads',
+          description: 'Big payloads.',
+          details: { type: 'opportunity', overallSavingsMs: 0, overallSavingsBytes: 524288, items: [] },
+        },
+        'tiny-bytes': {
+          title: 'Trivial savings',
+          description: 'Too small to bother.',
+          details: { type: 'opportunity', overallSavingsMs: 0, overallSavingsBytes: 5000, items: [] },
+        },
+      },
+    };
+    const result = mapOpportunities(lhr as any);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('big-bytes');
+    expect(result[0].severity).toBe('high'); // >= 500 KB
+    expect(result[0].savingsBytes).toBe(524288);
+    expect(result[0].savingsDisplay).toBe('−512 KB');
+    expect(result[0].estimatedImpact).toBe('512 KB less to download.');
+  });
+
+  it('sorts ms-savings opportunities ahead of byte-only ones', () => {
+    const lhr = {
+      audits: {
+        'byte-only': {
+          title: 'Byte only',
+          description: 'Bytes.',
+          details: { type: 'opportunity', overallSavingsMs: 0, overallSavingsBytes: 204800, items: [] },
+        },
+        'ms-savings': {
+          title: 'Time savings',
+          description: 'Time.',
+          details: { type: 'opportunity', overallSavingsMs: 400, items: [] },
+        },
+      },
+    };
+    const result = mapOpportunities(lhr as any);
+    expect(result.map(o => o.id)).toEqual(['ms-savings', 'byte-only']);
+  });
+
+  it('names cross-origin affected resources with their hostname', () => {
+    const lhr = {
+      audits: {
+        'render-blocking-resources': {
+          title: 'Eliminate render-blocking resources',
+          description: 'Blocking render.',
+          details: {
+            type: 'opportunity',
+            overallSavingsMs: 500,
+            items: [{ url: 'https://cdn.example.com/lib/vendor.js', totalBytes: 102400 }],
+          },
+        },
+      },
+    };
+    const result = mapOpportunities(lhr as any, 'https://example.com/');
+    expect(result[0].affectedResources).toEqual([{ name: 'cdn.example.com · vendor.js', size: '100 KB' }]);
   });
 });
