@@ -1,4 +1,4 @@
-import type { AuditResult, CulpritItem, CwvVerdict, Device, DiagnosticsData, MetricCulpritGroup, MetricValue, Opportunity, ResourceRow, Status } from './types';
+import type { AuditResult, CulpritItem, CwvVerdict, Device, DiagnosticStatus, DiagnosticsData, DiagnosticsStatuses, FilmstripFrame, MetricCulpritGroup, MetricValue, Opportunity, ResourceRow, Status } from './types';
 
 const METRIC_THRESHOLDS: Record<MetricValue['id'], { good: number; poor: number }> = {
   lcp: { good: 2500, poor: 4000 },
@@ -307,7 +307,24 @@ export function mapCulprits(lhr: any, metrics: MetricValue[], pageUrl: string): 
   return groups;
 }
 
-export function mapResources(lhr: any): ResourceRow[] {
+function statusFromScore(score: unknown): DiagnosticStatus {
+  if (typeof score !== 'number') return 'neutral';
+  if (score >= 0.9) return 'good';
+  if (score >= 0.5) return 'needs-improvement';
+  return 'poor';
+}
+
+export function mapResources(lhr: any, pageUrl: string, opportunities: Opportunity[]): ResourceRow[] {
+  const urlToOpportunityTitle = new Map<string, string>();
+  for (const opportunity of opportunities) {
+    const oppItems: any[] = lhr.audits?.[opportunity.id]?.details?.items ?? [];
+    for (const item of Array.isArray(oppItems) ? oppItems : []) {
+      if (typeof item?.url === 'string' && !urlToOpportunityTitle.has(item.url)) {
+        urlToOpportunityTitle.set(item.url, opportunity.title);
+      }
+    }
+  }
+
   const details = lhr.audits?.['network-requests']?.details;
   const items: any[] = Array.isArray(details?.items) ? details.items : [];
   const totalBytes = items.reduce((sum: number, i: any) => sum + (i.transferSize ?? 0), 0) || 1;
@@ -323,19 +340,13 @@ export function mapResources(lhr: any): ResourceRow[] {
       const category: ResourceRow['category'] = isThirdParty
         ? 'Third-party'
         : CATEGORY_BY_RESOURCE_TYPE[i.resourceType] ?? 'Other';
-      let name = i.url;
-      try {
-        name = new URL(i.url).pathname.split('/').filter(Boolean).pop() || i.url;
-      } catch {
-        /* keep full url as name */
-      }
       return {
         category,
-        resource: name,
+        resource: resourceDisplayName(i.url, pageUrl),
         transferSize: formatBytes(i.transferSize),
         transferBytes: i.transferSize as number,
         loadContributionPct: Math.round((i.transferSize / totalBytes) * 100),
-        optimization: OPTIMIZATION_HINT[category],
+        optimization: urlToOpportunityTitle.get(i.url) ?? OPTIMIZATION_HINT[category],
       };
     })
     .sort((a, b) => b.transferBytes - a.transferBytes)
@@ -344,6 +355,14 @@ export function mapResources(lhr: any): ResourceRow[] {
 
 export function mapDiagnostics(lhr: any): DiagnosticsData {
   const bytesTotal = lhr.audits?.['total-byte-weight']?.numericValue ?? 0;
+  const statuses: DiagnosticsStatuses = {
+    ttfb: statusFromScore(lhr.audits?.['server-response-time']?.score),
+    tti: statusFromScore(lhr.audits?.['interactive']?.score),
+    domSize: statusFromScore(lhr.audits?.['dom-size']?.score),
+    transferSize: statusFromScore(lhr.audits?.['total-byte-weight']?.score),
+    mainThreadWork: statusFromScore(lhr.audits?.['mainthread-work-breakdown']?.score),
+    networkRequests: 'neutral', // Lighthouse does not score request count.
+  };
   return {
     ttfbSeconds: round2((lhr.audits?.['server-response-time']?.numericValue ?? 0) / 1000),
     ttiSeconds: round2((lhr.audits?.['interactive']?.numericValue ?? 0) / 1000),
@@ -351,7 +370,16 @@ export function mapDiagnostics(lhr: any): DiagnosticsData {
     networkRequests: (lhr.audits?.['network-requests']?.details?.items ?? []).length,
     transferSizeMB: round2(bytesTotal / (1024 * 1024)),
     mainThreadWorkSeconds: round2((lhr.audits?.['mainthread-work-breakdown']?.numericValue ?? 0) / 1000),
+    statuses,
   };
+}
+
+export function mapFilmstrip(lhr: any): FilmstripFrame[] {
+  const items = lhr.audits?.['screenshot-thumbnails']?.details?.items;
+  if (!Array.isArray(items)) return [];
+  return items
+    .filter((i: any) => typeof i?.data === 'string' && typeof i?.timing === 'number')
+    .map((i: any) => ({ timingMs: i.timing, dataUri: i.data }));
 }
 
 export function buildSummary(
@@ -388,7 +416,7 @@ export function mapLhrToAuditResult(lhr: any, url: string, device: Device): Audi
   const score = Math.round((lhr.categories?.performance?.score ?? 0) * 100);
   const metrics = mapAllMetrics(lhr);
   const opportunities = mapOpportunities(lhr, pageUrl);
-  const resources = mapResources(lhr);
+  const resources = mapResources(lhr, pageUrl, opportunities);
   const diagnostics = mapDiagnostics(lhr);
   const culprits = mapCulprits(lhr, metrics, pageUrl);
   const { sentence, boldValues } = buildSummary(score, device, opportunities);
@@ -409,6 +437,7 @@ export function mapLhrToAuditResult(lhr: any, url: string, device: Device): Audi
     diagnostics,
     cwvVerdict: buildCwvVerdict(metrics),
     culprits,
+    filmstrip: mapFilmstrip(lhr),
     lighthouseVersion: lhr.lighthouseVersion ?? 'unknown',
     chromeVersion: lhr.environment?.hostUserAgent?.match(/Chrome\/([\d.]+)/)?.[1] ?? 'unknown',
     timestamp: Date.now(),

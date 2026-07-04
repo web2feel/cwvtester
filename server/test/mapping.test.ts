@@ -8,9 +8,11 @@ import {
   mapAllMetrics,
   mapCulprits,
   mapDiagnostics,
+  mapFilmstrip,
   mapLhrToAuditResult,
   mapMetric,
   mapOpportunities,
+  mapResources,
   resourceDisplayName,
 } from '../src/mapping';
 import type { MetricValue } from '../src/types';
@@ -619,5 +621,88 @@ describe('mapCulprits', () => {
       page
     );
     expect(groups).toEqual([]); // CLS is good; LCP/TBT failing but their audits are absent
+  });
+});
+
+describe('mapDiagnostics statuses', () => {
+  it('maps Lighthouse audit scores to statuses with 0.9/0.5 bands, neutral when unscored', () => {
+    const lhr = {
+      audits: {
+        'server-response-time': { numericValue: 600, score: 0.95 },
+        interactive: { numericValue: 3000, score: 0.6 },
+        'dom-size': { numericValue: 1842, score: 0.2 },
+        'total-byte-weight': { numericValue: 1048576 }, // no score → neutral
+        'mainthread-work-breakdown': { numericValue: 4000, score: 0.5 },
+        'network-requests': { details: { items: [{ url: 'https://a.com/x.js' }] } },
+      },
+    };
+    const diagnostics = mapDiagnostics(lhr as any);
+    expect(diagnostics.statuses).toEqual({
+      ttfb: 'good',
+      tti: 'needs-improvement',
+      domSize: 'poor',
+      transferSize: 'neutral',
+      mainThreadWork: 'needs-improvement',
+      networkRequests: 'neutral',
+    });
+  });
+});
+
+describe('mapResources naming + opportunity cross-link', () => {
+  it('names cross-origin resources with hostname and links rows to the opportunity that flagged them', () => {
+    const lhr = {
+      audits: {
+        'network-requests': {
+          details: {
+            items: [
+              { url: 'https://example.com/js/app.js', transferSize: 200000, resourceType: 'Script' },
+              { url: 'https://cdn.example.com/lib/vendor.js', transferSize: 100000, resourceType: 'Script' },
+            ],
+          },
+        },
+        'unused-javascript': {
+          title: 'Reduce unused JavaScript',
+          description: 'Dead code.',
+          details: {
+            type: 'opportunity',
+            overallSavingsMs: 400,
+            items: [{ url: 'https://example.com/js/app.js', totalBytes: 150000 }],
+          },
+        },
+      },
+    };
+    const opportunities = mapOpportunities(lhr as any, 'https://example.com/');
+    const resources = mapResources(lhr as any, 'https://example.com/', opportunities);
+
+    const appRow = resources.find(r => r.resource === 'app.js')!;
+    expect(appRow.optimization).toBe('Reduce unused JavaScript');
+
+    const vendorRow = resources.find(r => r.resource === 'cdn.example.com · vendor.js')!;
+    expect(vendorRow.optimization).toBe('Code-split, tree-shake'); // generic hint fallback
+  });
+});
+
+describe('mapFilmstrip', () => {
+  it('maps screenshot-thumbnails frames to timing + data URI pairs', () => {
+    const lhr = {
+      audits: {
+        'screenshot-thumbnails': {
+          details: {
+            items: [
+              { timing: 375, data: 'data:image/jpeg;base64,AAA' },
+              { timing: 750, data: 'data:image/jpeg;base64,BBB' },
+            ],
+          },
+        },
+      },
+    };
+    expect(mapFilmstrip(lhr as any)).toEqual([
+      { timingMs: 375, dataUri: 'data:image/jpeg;base64,AAA' },
+      { timingMs: 750, dataUri: 'data:image/jpeg;base64,BBB' },
+    ]);
+  });
+
+  it('returns an empty array when the audit is missing', () => {
+    expect(mapFilmstrip({ audits: {} } as any)).toEqual([]);
   });
 });
