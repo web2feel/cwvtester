@@ -2,6 +2,40 @@ export type Device = 'desktop' | 'mobile';
 export type Status = 'good' | 'needs-improvement' | 'poor';
 export type AuditJobStatus = 'queued' | 'running' | 'done' | 'error';
 
+export type DiagnosticStatus = Status | 'neutral';
+
+export interface DiagnosticsStatuses {
+  ttfb: DiagnosticStatus;
+  tti: DiagnosticStatus;
+  domSize: DiagnosticStatus;
+  networkRequests: DiagnosticStatus;
+  transferSize: DiagnosticStatus;
+  mainThreadWork: DiagnosticStatus;
+}
+
+export interface CulpritItem {
+  label: string;
+  detail?: string;
+  value?: string;
+}
+
+export interface MetricCulpritGroup {
+  metricId: 'lcp' | 'cls' | 'tbt';
+  metricLabel: string;
+  items: CulpritItem[];
+}
+
+export interface CwvVerdict {
+  passes: boolean;
+  failing: string[];
+  note: string;
+}
+
+export interface FilmstripFrame {
+  timingMs: number;
+  dataUri: string;
+}
+
 export interface MetricValue {
   id: 'lcp' | 'inp' | 'cls' | 'tbt' | 'si' | 'fcp';
   label: string;
@@ -12,6 +46,8 @@ export interface MetricValue {
   status: Status;
   goodThreshold: number;
   poorThreshold: number;
+  /** Absent = measurable. false = lab runs cannot produce this metric (e.g. INP). */
+  measurable?: boolean;
 }
 
 export interface Opportunity {
@@ -24,6 +60,10 @@ export interface Opportunity {
   whyItHurts: string;
   estimatedImpact: string;
   affectedResources: { name: string; size: string }[];
+  /** Metrics this fix improves, e.g. ['LCP', 'FCP']. From Lighthouse metricSavings. */
+  affects?: string[];
+  /** Set when the audit reports byte savings (may exist without ms savings). */
+  savingsBytes?: number;
 }
 
 export interface ResourceRow {
@@ -42,6 +82,7 @@ export interface DiagnosticsData {
   networkRequests: number;
   transferSizeMB: number;
   mainThreadWorkSeconds: number;
+  statuses?: DiagnosticsStatuses;
 }
 
 export interface AuditResult {
@@ -58,6 +99,9 @@ export interface AuditResult {
   opportunities: Opportunity[];
   resources: ResourceRow[];
   diagnostics: DiagnosticsData;
+  cwvVerdict?: CwvVerdict;
+  culprits?: MetricCulpritGroup[];
+  filmstrip?: FilmstripFrame[];
   lighthouseVersion: string;
   chromeVersion: string;
   timestamp: number;
