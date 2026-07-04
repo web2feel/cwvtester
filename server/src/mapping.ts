@@ -1,4 +1,4 @@
-import type { AuditResult, CulpritItem, CwvVerdict, Device, DiagnosticStatus, DiagnosticsData, DiagnosticsStatuses, FilmstripFrame, MetricCulpritGroup, MetricValue, Opportunity, ResourceRow, Status } from './types';
+import type { AuditResult, AuthConfig, CulpritItem, CwvVerdict, Device, DiagnosticStatus, DiagnosticsData, DiagnosticsStatuses, FilmstripFrame, MetricCulpritGroup, MetricValue, Opportunity, ResourceRow, Status } from './types';
 
 const METRIC_THRESHOLDS: Record<MetricValue['id'], { good: number; poor: number }> = {
   lcp: { good: 2500, poor: 4000 },
@@ -403,6 +403,14 @@ export function buildSummary(
   };
 }
 
+export function buildAuthHeaders(auth?: AuthConfig): Record<string, string> {
+  if (auth && auth.type === 'basic') {
+    const encoded = Buffer.from(`${auth.username}:${auth.password}`).toString('base64');
+    return { Authorization: `Basic ${encoded}` };
+  }
+  return {};
+}
+
 export function getLhrRuntimeError(lhr: any): string | null {
   const re = lhr?.runtimeError;
   if (re && re.code && re.code !== 'NO_ERROR') {
@@ -411,7 +419,7 @@ export function getLhrRuntimeError(lhr: any): string | null {
   return null;
 }
 
-export function mapLhrToAuditResult(lhr: any, url: string, device: Device): AuditResult {
+export function mapLhrToAuditResult(lhr: any, url: string, device: Device, authUsed: 'basic' | null): AuditResult {
   const pageUrl = typeof lhr.finalDisplayedUrl === 'string' ? lhr.finalDisplayedUrl : url;
   const score = Math.round((lhr.categories?.performance?.score ?? 0) * 100);
   const metrics = mapAllMetrics(lhr);
@@ -424,6 +432,7 @@ export function mapLhrToAuditResult(lhr: any, url: string, device: Device): Audi
   return {
     url,
     device,
+    authUsed,
     score,
     status: getScoreStatus(score),
     summarySentence: sentence,

@@ -2,6 +2,12 @@ export type Device = 'desktop' | 'mobile';
 export type Status = 'good' | 'needs-improvement' | 'poor';
 export type AuditJobStatus = 'queued' | 'running' | 'done' | 'error';
 
+export interface AuthConfig {
+  type: 'basic';
+  username: string;
+  password: string;
+}
+
 export type DiagnosticStatus = Status | 'neutral';
 
 export interface DiagnosticsStatuses {
@@ -88,6 +94,7 @@ export interface DiagnosticsData {
 export interface AuditResult {
   url: string;
   device: Device;
+  authUsed: 'basic' | null;
   score: number;
   status: Status;
   summarySentence: string;
@@ -118,6 +125,7 @@ export interface HistoryRun {
   id: string;
   url: string;
   device: Device;
+  authUsed: 'basic' | null;
   createdAt: number;
   score: number;
   status: Status;

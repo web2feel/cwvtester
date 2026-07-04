@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildAuthHeaders,
   buildCwvVerdict,
   buildSummary,
   getLhrRuntimeError,
@@ -679,6 +680,37 @@ describe('mapResources naming + opportunity cross-link', () => {
 
     const vendorRow = resources.find(r => r.resource === 'cdn.example.com · vendor.js')!;
     expect(vendorRow.optimization).toBe('Code-split, tree-shake'); // generic hint fallback
+  });
+});
+
+describe('buildAuthHeaders', () => {
+  it('builds a Basic Authorization header from username/password', () => {
+    const headers = buildAuthHeaders({ type: 'basic', username: 'deploy-preview', password: 's3cret' });
+    const expected = 'Basic ' + Buffer.from('deploy-preview:s3cret').toString('base64');
+    expect(headers).toEqual({ Authorization: expected });
+  });
+
+  it('returns an empty object for undefined auth', () => {
+    expect(buildAuthHeaders(undefined)).toEqual({});
+  });
+});
+
+describe('mapLhrToAuditResult authUsed', () => {
+  const minimalLhr = {
+    categories: { performance: { score: 0.5 } },
+    audits: {},
+    lighthouseVersion: '12.0.0',
+    environment: { hostUserAgent: 'Chrome/126.0.0.0' },
+  };
+
+  it("records authUsed 'basic' when passed", () => {
+    const result = mapLhrToAuditResult(minimalLhr as any, 'https://x.com', 'mobile', 'basic');
+    expect(result.authUsed).toBe('basic');
+  });
+
+  it('records authUsed null when passed null', () => {
+    const result = mapLhrToAuditResult(minimalLhr as any, 'https://x.com', 'mobile', null);
+    expect(result.authUsed).toBeNull();
   });
 });
 
