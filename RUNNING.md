@@ -48,5 +48,5 @@ The server runs Lighthouse against **any URL the client submits**, which means i
 
 ## Notes
 
-- "Export report" in the header is an intentional **non-functional placeholder** (a future PDF/CSV export), per the design handoff.
+- "Export report" was removed from the header. Export functionality (PDF/CSV) is not implemented and was not something Lighthouse output can honestly populate; it may be added in a future iteration.
 - Opportunity cards show two real-data fields (**Why it hurts** / **Estimated impact**); the design mock's "Likely cause"/"Recommended fix" and the "Prioritized recommendations" section were intentionally omitted because real Lighthouse output can't honestly populate them (see the spec's "Deviations from the mock's curated copy").
