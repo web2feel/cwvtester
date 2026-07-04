@@ -1,7 +1,10 @@
 import { AuditForm } from '../components/AuditForm';
+import { AuthCard } from '../components/AuthCard';
+import { CulpritsSection } from '../components/CulpritsSection';
 import { Diagnostics } from '../components/Diagnostics';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
+import { Filmstrip } from '../components/Filmstrip';
 import { Footer } from '../components/Footer';
 import { LoadingState } from '../components/LoadingState';
 import { MetricsGrid } from '../components/MetricsGrid';
@@ -23,6 +26,13 @@ interface DashboardProps {
   error: string | null;
   result: AuditResult | null;
   completedAt: number | null;
+  authMethod: 'none' | 'basic';
+  authUsername: string;
+  authPassword: string;
+  onAuthMethodChange: (m: 'none' | 'basic') => void;
+  onAuthUsernameChange: (v: string) => void;
+  onAuthPasswordChange: (v: string) => void;
+  authIncomplete: boolean;
 }
 
 export function Dashboard({
@@ -35,6 +45,13 @@ export function Dashboard({
   error,
   result,
   completedAt,
+  authMethod,
+  authUsername,
+  authPassword,
+  onAuthMethodChange,
+  onAuthUsernameChange,
+  onAuthPasswordChange,
+  authIncomplete,
 }: DashboardProps) {
   return (
     <div>
@@ -45,7 +62,21 @@ export function Dashboard({
         </p>
       </div>
 
-      <AuditForm device={device} onDeviceChange={onDeviceChange} onSubmit={onSubmit} disabled={phase === 'running'} />
+      <AuditForm
+        device={device}
+        onDeviceChange={onDeviceChange}
+        onSubmit={onSubmit}
+        disabled={phase === 'running' || authIncomplete}
+      />
+
+      <AuthCard
+        method={authMethod}
+        username={authUsername}
+        password={authPassword}
+        onMethodChange={onAuthMethodChange}
+        onUsernameChange={onAuthUsernameChange}
+        onPasswordChange={onAuthPasswordChange}
+      />
 
       {result && completedAt && phase === 'done' && (
         <div className="mt-3 flex flex-wrap items-center gap-3 px-1 font-mono text-xs text-text-faint">
@@ -61,6 +92,12 @@ export function Dashboard({
           </span>
           <span className="text-border-inner">·</span>
           <span>{formatRelativeTime(completedAt)}</span>
+          {result.authUsed === 'basic' && (
+            <>
+              <span className="text-border-inner">·</span>
+              <span className="text-text-tertiary">🔒 Basic auth</span>
+            </>
+          )}
         </div>
       )}
 
@@ -70,8 +107,10 @@ export function Dashboard({
       {phase === 'done' && result && (
         <>
           <SummaryHero result={result} />
+          {result.filmstrip && result.filmstrip.length > 0 && <Filmstrip frames={result.filmstrip} />}
           <MetricsGrid result={result} />
-          <OpportunitiesList opportunities={result.opportunities} />
+          {result.culprits && result.culprits.length > 0 && <CulpritsSection culprits={result.culprits} />}
+          <OpportunitiesList key={result.timestamp} opportunities={result.opportunities} />
           <ResourceTable resources={result.resources} />
           <Diagnostics diagnostics={result.diagnostics} />
           <Footer />

@@ -118,8 +118,15 @@ export function History({ onBack, onOpenRun }: HistoryProps) {
                       }`}
                     >
                       <span className="font-mono text-text-primary">{formatDate(run.createdAt)}</span>
-                      <span className="w-fit rounded-pill bg-border-inner px-2.5 py-[3px] text-[11px] font-medium text-text-tertiary">
-                        {run.device === 'mobile' ? 'Mobile' : 'Desktop'}
+                      <span className="flex items-center gap-1.5">
+                        <span className="w-fit rounded-pill bg-border-inner px-2.5 py-[3px] text-[11px] font-medium text-text-tertiary">
+                          {run.device === 'mobile' ? 'Mobile' : 'Desktop'}
+                        </span>
+                        {run.authUsed === 'basic' && (
+                          <span title="Basic auth" className="text-[11px] text-text-faint">
+                            🔒
+                          </span>
+                        )}
                       </span>
                       <span className="inline-flex items-center gap-2">
                         <span className="h-2 w-2 rounded-full" style={{ background: STATUS_DOT[run.status] }} />
@@ -131,7 +138,9 @@ export function History({ onBack, onOpenRun }: HistoryProps) {
                         )}
                       </span>
                       <span className="font-mono text-text-tertiary">{(run.lcp / 1000).toFixed(1)}s</span>
-                      <span className="font-mono text-text-tertiary">{Math.round(run.inp)}ms</span>
+                      <span className="font-mono text-text-tertiary">
+                        {run.inp === 0 ? '—' : `${Math.round(run.inp)}ms`}
+                      </span>
                       <span className="font-mono text-text-tertiary">{run.cls.toFixed(2)}</span>
                       <span className="justify-self-end text-lg text-text-faintest">›</span>
                     </button>

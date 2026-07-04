@@ -1,15 +1,22 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildAuthHeaders,
+  buildCwvVerdict,
   buildSummary,
   getLhrRuntimeError,
   getMetricStatus,
   getScoreStatus,
   mapAllMetrics,
+  mapCulprits,
   mapDiagnostics,
+  mapFilmstrip,
   mapLhrToAuditResult,
   mapMetric,
   mapOpportunities,
+  mapResources,
+  resourceDisplayName,
 } from '../src/mapping';
+import type { MetricValue } from '../src/types';
 
 describe('getLhrRuntimeError', () => {
   it('returns the message when runtimeError has a real code', () => {
@@ -272,5 +279,462 @@ describe('buildSummary', () => {
     expect(result.summaryBoldValues).toEqual(['72', '~1.5s']);
     expect(result.summarySentence).toContain('**72**');
     expect(result.summarySentence).toContain('**~1.5s**');
+  });
+});
+
+describe('mapMetric measurable flag', () => {
+  it('marks a metric not measurable when its audit is missing (lab INP)', () => {
+    const lhr = {
+      audits: {
+        'largest-contentful-paint': { displayValue: '2.4 s', numericValue: 2400 },
+        // no interaction-to-next-paint — lab navigation runs never produce it
+      },
+    };
+
+    const inp = mapMetric(lhr as any, 'inp');
+    expect(inp.measurable).toBe(false);
+    expect(inp.displayValue).toBe('—');
+    expect(inp.unit).toBe('');
+    expect(inp.value).toBe(0);
+
+    const lcp = mapMetric(lhr as any, 'lcp');
+    expect(lcp.measurable).toBe(true);
+    expect(lcp.displayValue).toBe('2.4');
+  });
+});
+
+function metricStub(id: MetricValue['id'], label: string, status: MetricValue['status'], measurable = true): MetricValue {
+  return {
+    id,
+    label,
+    fullName: label,
+    value: 0,
+    unit: '',
+    displayValue: '0',
+    status,
+    measurable,
+    goodThreshold: 1,
+    poorThreshold: 2,
+  };
+}
+
+describe('buildCwvVerdict', () => {
+  it('passes when lab LCP and CLS are both good', () => {
+    const verdict = buildCwvVerdict([
+      metricStub('lcp', 'LCP', 'good'),
+      metricStub('cls', 'CLS', 'good'),
+      metricStub('inp', 'INP', 'good', false),
+    ]);
+    expect(verdict.passes).toBe(true);
+    expect(verdict.failing).toEqual([]);
+    expect(verdict.note).toBe('Lab verdict from LCP + CLS. INP requires field data.');
+  });
+
+  it('fails and names the failing metric', () => {
+    const verdict = buildCwvVerdict([
+      metricStub('lcp', 'LCP', 'needs-improvement'),
+      metricStub('cls', 'CLS', 'good'),
+    ]);
+    expect(verdict.passes).toBe(false);
+    expect(verdict.failing).toEqual(['LCP']);
+  });
+
+  it('lists both LCP and CLS when both fail', () => {
+    const verdict = buildCwvVerdict([
+      metricStub('lcp', 'LCP', 'poor'),
+      metricStub('cls', 'CLS', 'poor'),
+    ]);
+    expect(verdict.failing).toEqual(['LCP', 'CLS']);
+  });
+
+  it('ignores non-measurable LCP/CLS rather than failing them', () => {
+    const verdict = buildCwvVerdict([
+      metricStub('lcp', 'LCP', 'good', false),
+      metricStub('cls', 'CLS', 'good'),
+    ]);
+    expect(verdict.passes).toBe(true);
+  });
+});
+
+describe('resourceDisplayName', () => {
+  it('returns the filename for same-origin resources', () => {
+    expect(resourceDisplayName('https://example.com/js/app.js', 'https://example.com/')).toBe('app.js');
+  });
+
+  it('prefixes the hostname for cross-origin resources', () => {
+    expect(resourceDisplayName('https://cdn.example.com/js/app.js', 'https://example.com/')).toBe(
+      'cdn.example.com · app.js'
+    );
+  });
+
+  it('falls back to the hostname when the path has no filename', () => {
+    expect(resourceDisplayName('https://cdn.example.com/', 'https://example.com/')).toBe(
+      'cdn.example.com · cdn.example.com'
+    );
+  });
+
+  it('returns the raw string when the resource URL is unparseable', () => {
+    expect(resourceDisplayName('not a url', 'https://example.com/')).toBe('not a url');
+  });
+});
+
+describe('mapOpportunities affects + byte-only', () => {
+  it('derives affects and per-metric impact from metricSavings', () => {
+    const lhr = {
+      audits: {
+        'unused-javascript': {
+          title: 'Reduce unused JavaScript',
+          description: 'Remove dead code.',
+          metricSavings: { LCP: 500, FCP: 100, CLS: 0 },
+          details: { type: 'opportunity', overallSavingsMs: 600, items: [] },
+        },
+      },
+    };
+    const result = mapOpportunities(lhr as any);
+    expect(result[0].affects).toEqual(['LCP', 'FCP']);
+    expect(result[0].estimatedImpact).toBe('~0.50s faster LCP · ~0.10s faster FCP.');
+  });
+
+  it('formats CLS metricSavings in CLS units, not seconds', () => {
+    const lhr = {
+      audits: {
+        'some-cls-fix': {
+          title: 'Fix layout shifts',
+          description: 'Reserve space.',
+          metricSavings: { CLS: 0.12 },
+          details: { type: 'opportunity', overallSavingsMs: 50, items: [] },
+        },
+      },
+    };
+    const result = mapOpportunities(lhr as any);
+    expect(result[0].affects).toEqual(['CLS']);
+    expect(result[0].estimatedImpact).toBe('−0.12 CLS.');
+  });
+
+  it('falls back to the audit lookup table when metricSavings is absent', () => {
+    const lhr = {
+      audits: {
+        'render-blocking-resources': {
+          title: 'Eliminate render-blocking resources',
+          description: 'Blocking render.',
+          details: { type: 'opportunity', overallSavingsMs: 500, items: [] },
+        },
+      },
+    };
+    const result = mapOpportunities(lhr as any);
+    expect(result[0].affects).toEqual(['FCP', 'LCP']);
+  });
+
+  it('includes byte-only opportunities above the 10 KB floor with byte severity and display', () => {
+    const lhr = {
+      audits: {
+        'big-bytes': {
+          title: 'Serve smaller payloads',
+          description: 'Big payloads.',
+          details: { type: 'opportunity', overallSavingsMs: 0, overallSavingsBytes: 524288, items: [] },
+        },
+        'tiny-bytes': {
+          title: 'Trivial savings',
+          description: 'Too small to bother.',
+          details: { type: 'opportunity', overallSavingsMs: 0, overallSavingsBytes: 5000, items: [] },
+        },
+      },
+    };
+    const result = mapOpportunities(lhr as any);
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('big-bytes');
+    expect(result[0].severity).toBe('high'); // >= 500 KB
+    expect(result[0].savingsBytes).toBe(524288);
+    expect(result[0].savingsDisplay).toBe('−512 KB');
+    expect(result[0].estimatedImpact).toBe('512 KB less to download.');
+  });
+
+  it('sorts ms-savings opportunities ahead of byte-only ones', () => {
+    const lhr = {
+      audits: {
+        'byte-only': {
+          title: 'Byte only',
+          description: 'Bytes.',
+          details: { type: 'opportunity', overallSavingsMs: 0, overallSavingsBytes: 204800, items: [] },
+        },
+        'ms-savings': {
+          title: 'Time savings',
+          description: 'Time.',
+          details: { type: 'opportunity', overallSavingsMs: 400, items: [] },
+        },
+      },
+    };
+    const result = mapOpportunities(lhr as any);
+    expect(result.map(o => o.id)).toEqual(['ms-savings', 'byte-only']);
+  });
+
+  it('names cross-origin affected resources with their hostname', () => {
+    const lhr = {
+      audits: {
+        'render-blocking-resources': {
+          title: 'Eliminate render-blocking resources',
+          description: 'Blocking render.',
+          details: {
+            type: 'opportunity',
+            overallSavingsMs: 500,
+            items: [{ url: 'https://cdn.example.com/lib/vendor.js', totalBytes: 102400 }],
+          },
+        },
+      },
+    };
+    const result = mapOpportunities(lhr as any, 'https://example.com/');
+    expect(result[0].affectedResources).toEqual([{ name: 'cdn.example.com · vendor.js', size: '100 KB' }]);
+  });
+});
+
+describe('mapOpportunities severity tier boundaries', () => {
+  function lhrWith(savingsMs: number, savingsBytes?: number) {
+    return {
+      audits: {
+        'the-audit': {
+          title: 'Audit',
+          description: 'Desc.',
+          details: {
+            type: 'opportunity',
+            overallSavingsMs: savingsMs,
+            ...(savingsBytes !== undefined ? { overallSavingsBytes: savingsBytes } : {}),
+            items: [],
+          },
+        },
+      },
+    };
+  }
+
+  it('applies ms severity boundaries at 800 and 300', () => {
+    expect(mapOpportunities(lhrWith(800) as any)[0].severity).toBe('high');
+    expect(mapOpportunities(lhrWith(799) as any)[0].severity).toBe('medium');
+    expect(mapOpportunities(lhrWith(300) as any)[0].severity).toBe('medium');
+    expect(mapOpportunities(lhrWith(299) as any)[0].severity).toBe('low');
+  });
+
+  it('applies byte severity boundaries at 512000 and 102400 when ms is zero', () => {
+    expect(mapOpportunities(lhrWith(0, 512000) as any)[0].severity).toBe('high');
+    expect(mapOpportunities(lhrWith(0, 511999) as any)[0].severity).toBe('medium');
+    expect(mapOpportunities(lhrWith(0, 102400) as any)[0].severity).toBe('medium');
+    expect(mapOpportunities(lhrWith(0, 102399) as any)[0].severity).toBe('low');
+  });
+
+  it('includes exactly at the 10 KB byte floor and excludes just below it', () => {
+    expect(mapOpportunities(lhrWith(0, 10240) as any)).toHaveLength(1);
+    expect(mapOpportunities(lhrWith(0, 10240) as any)[0].severity).toBe('low');
+    expect(mapOpportunities(lhrWith(0, 10239) as any)).toHaveLength(0);
+  });
+
+  it('uses ms severity, not byte severity, when both ms and large bytes are present', () => {
+    expect(mapOpportunities(lhrWith(100, 600000) as any)[0].severity).toBe('low');
+  });
+});
+
+describe('mapCulprits', () => {
+  const page = 'https://example.com/';
+
+  it('extracts the LCP element and phase breakdown when LCP is failing', () => {
+    const lhr = {
+      audits: {
+        'largest-contentful-paint-element': {
+          details: {
+            items: [
+              { items: [{ node: { selector: 'div.hero > img', snippet: '<img src="hero.jpg">', nodeLabel: 'Hero image' } }] },
+              {
+                items: [
+                  { phase: 'TTFB', timing: 600 },
+                  { phase: 'Load Delay', timing: 1200 },
+                  { phase: 'Load Time', timing: 800 },
+                  { phase: 'Render Delay', timing: 400 },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    };
+    const groups = mapCulprits(lhr as any, [metricStub('lcp', 'LCP', 'poor')], page);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].metricId).toBe('lcp');
+    expect(groups[0].metricLabel).toBe('LCP');
+    expect(groups[0].items[0]).toEqual({ label: 'div.hero > img', detail: '<img src="hero.jpg">' });
+    expect(groups[0].items[1]).toEqual({ label: 'TTFB', value: '600 ms' });
+    expect(groups[0].items).toHaveLength(5); // element + 4 phases, capped at 5
+  });
+
+  it('extracts shifted elements from layout-shifts when CLS is failing', () => {
+    const lhr = {
+      audits: {
+        'layout-shifts': {
+          details: { items: [{ node: { selector: 'header.banner' }, score: 0.18 }] },
+        },
+      },
+    };
+    const groups = mapCulprits(lhr as any, [metricStub('cls', 'CLS', 'needs-improvement')], page);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].items).toEqual([{ label: 'header.banner', value: 'shift 0.18' }]);
+  });
+
+  it('falls back to layout-shift-elements for older Lighthouse output', () => {
+    const lhr = {
+      audits: {
+        'layout-shift-elements': {
+          details: { items: [{ node: { nodeLabel: 'Cookie banner' }, score: 0.3 }] },
+        },
+      },
+    };
+    const groups = mapCulprits(lhr as any, [metricStub('cls', 'CLS', 'poor')], page);
+    expect(groups[0].items).toEqual([{ label: 'Cookie banner', value: 'shift 0.3' }]);
+  });
+
+  it('extracts long tasks and blocking third parties when TBT is failing', () => {
+    const lhr = {
+      audits: {
+        'long-tasks': {
+          details: { items: [{ url: 'https://cdn.example.com/vendor.js', duration: 310 }] },
+        },
+        'third-party-summary': {
+          details: {
+            items: [
+              { entity: 'Google Tag Manager', blockingTime: 250 },
+              { entity: 'Harmless', blockingTime: 0 },
+            ],
+          },
+        },
+      },
+    };
+    const groups = mapCulprits(lhr as any, [metricStub('tbt', 'TBT', 'poor')], page);
+    expect(groups[0].items).toEqual([
+      { label: 'cdn.example.com · vendor.js', value: '310 ms' },
+      { label: 'Google Tag Manager', value: '250 ms' },
+    ]);
+  });
+
+  it('omits groups for passing metrics and for metrics with no extractable culprits', () => {
+    const lhr = {
+      audits: {
+        'layout-shifts': { details: { items: [{ node: { selector: 'div.a' }, score: 0.2 }] } },
+      },
+    };
+    const groups = mapCulprits(
+      lhr as any,
+      [metricStub('cls', 'CLS', 'good'), metricStub('lcp', 'LCP', 'poor'), metricStub('tbt', 'TBT', 'poor')],
+      page
+    );
+    expect(groups).toEqual([]); // CLS is good; LCP/TBT failing but their audits are absent
+  });
+});
+
+describe('mapDiagnostics statuses', () => {
+  it('maps Lighthouse audit scores to statuses with 0.9/0.5 bands, neutral when unscored', () => {
+    const lhr = {
+      audits: {
+        'server-response-time': { numericValue: 600, score: 0.95 },
+        interactive: { numericValue: 3000, score: 0.6 },
+        'dom-size': { numericValue: 1842, score: 0.2 },
+        'total-byte-weight': { numericValue: 1048576 }, // no score → neutral
+        'mainthread-work-breakdown': { numericValue: 4000, score: 0.5 },
+        'network-requests': { details: { items: [{ url: 'https://a.com/x.js' }] } },
+      },
+    };
+    const diagnostics = mapDiagnostics(lhr as any);
+    expect(diagnostics.statuses).toEqual({
+      ttfb: 'good',
+      tti: 'needs-improvement',
+      domSize: 'poor',
+      transferSize: 'neutral',
+      mainThreadWork: 'needs-improvement',
+      networkRequests: 'neutral',
+    });
+  });
+});
+
+describe('mapResources naming + opportunity cross-link', () => {
+  it('names cross-origin resources with hostname and links rows to the opportunity that flagged them', () => {
+    const lhr = {
+      audits: {
+        'network-requests': {
+          details: {
+            items: [
+              { url: 'https://example.com/js/app.js', transferSize: 200000, resourceType: 'Script' },
+              { url: 'https://cdn.example.com/lib/vendor.js', transferSize: 100000, resourceType: 'Script' },
+            ],
+          },
+        },
+        'unused-javascript': {
+          title: 'Reduce unused JavaScript',
+          description: 'Dead code.',
+          details: {
+            type: 'opportunity',
+            overallSavingsMs: 400,
+            items: [{ url: 'https://example.com/js/app.js', totalBytes: 150000 }],
+          },
+        },
+      },
+    };
+    const opportunities = mapOpportunities(lhr as any, 'https://example.com/');
+    const resources = mapResources(lhr as any, 'https://example.com/', opportunities);
+
+    const appRow = resources.find(r => r.resource === 'app.js')!;
+    expect(appRow.optimization).toBe('Reduce unused JavaScript');
+
+    const vendorRow = resources.find(r => r.resource === 'cdn.example.com · vendor.js')!;
+    expect(vendorRow.optimization).toBe('Code-split, tree-shake'); // generic hint fallback
+  });
+});
+
+describe('buildAuthHeaders', () => {
+  it('builds a Basic Authorization header from username/password', () => {
+    const headers = buildAuthHeaders({ type: 'basic', username: 'deploy-preview', password: 's3cret' });
+    const expected = 'Basic ' + Buffer.from('deploy-preview:s3cret').toString('base64');
+    expect(headers).toEqual({ Authorization: expected });
+  });
+
+  it('returns an empty object for undefined auth', () => {
+    expect(buildAuthHeaders(undefined)).toEqual({});
+  });
+});
+
+describe('mapLhrToAuditResult authUsed', () => {
+  const minimalLhr = {
+    categories: { performance: { score: 0.5 } },
+    audits: {},
+    lighthouseVersion: '12.0.0',
+    environment: { hostUserAgent: 'Chrome/126.0.0.0' },
+  };
+
+  it("records authUsed 'basic' when passed", () => {
+    const result = mapLhrToAuditResult(minimalLhr as any, 'https://x.com', 'mobile', 'basic');
+    expect(result.authUsed).toBe('basic');
+  });
+
+  it('records authUsed null when passed null', () => {
+    const result = mapLhrToAuditResult(minimalLhr as any, 'https://x.com', 'mobile', null);
+    expect(result.authUsed).toBeNull();
+  });
+});
+
+describe('mapFilmstrip', () => {
+  it('maps screenshot-thumbnails frames to timing + data URI pairs', () => {
+    const lhr = {
+      audits: {
+        'screenshot-thumbnails': {
+          details: {
+            items: [
+              { timing: 375, data: 'data:image/jpeg;base64,AAA' },
+              { timing: 750, data: 'data:image/jpeg;base64,BBB' },
+            ],
+          },
+        },
+      },
+    };
+    expect(mapFilmstrip(lhr as any)).toEqual([
+      { timingMs: 375, dataUri: 'data:image/jpeg;base64,AAA' },
+      { timingMs: 750, dataUri: 'data:image/jpeg;base64,BBB' },
+    ]);
+  });
+
+  it('returns an empty array when the audit is missing', () => {
+    expect(mapFilmstrip({ audits: {} } as any)).toEqual([]);
   });
 });

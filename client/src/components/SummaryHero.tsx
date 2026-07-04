@@ -13,7 +13,7 @@ export function SummaryHero({ result }: SummaryHeroProps) {
       <ScoreGauge score={result.score} status={result.status} />
       <div>
         <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.05em] text-text-faint">Summary</div>
-        <p className="mb-6 max-w-[540px] text-[19px] leading-[1.55] text-text-secondary">
+        <p className="mb-4 max-w-[540px] text-[19px] leading-[1.55] text-text-secondary">
           {sentenceParts.map((part, i) =>
             part.bold ? (
               <b key={i} className="font-semibold text-text-primary">
@@ -24,6 +24,22 @@ export function SummaryHero({ result }: SummaryHeroProps) {
             )
           )}
         </p>
+        {result.cwvVerdict && (
+          <div className="mb-5">
+            <span
+              className={`inline-flex items-center gap-2 rounded-pill border px-3 py-1 text-[12.5px] font-semibold ${
+                result.cwvVerdict.passes
+                  ? 'border-[#bbf7d0] bg-[#ecfdf3] text-[#15803d]'
+                  : 'border-[#fecaca] bg-[#fef2f2] text-[#b91c1c]'
+              }`}
+            >
+              {result.cwvVerdict.passes
+                ? '✓ Passes Core Web Vitals (lab)'
+                : `✗ Fails Core Web Vitals (lab) — ${result.cwvVerdict.failing.join(', ')}`}
+            </span>
+            <div className="mt-1.5 text-[11px] text-text-faint">{result.cwvVerdict.note}</div>
+          </div>
+        )}
         <div className="grid grid-cols-3 gap-3.5 max-sm:grid-cols-1">
           <div className="rounded-xl border border-surface-muted3 bg-surface-muted p-[14px_16px]">
             <div className="font-mono text-2xl font-semibold tracking-[-0.02em]">{result.opportunitiesCount}</div>

@@ -19,7 +19,7 @@ export function Header({ view, onGoDashboard, onGoHistory }: HeaderProps) {
             Beta
           </span>
         </div>
-        <div className="flex items-center gap-1.5">
+        <div>
           <button
             onClick={onGoHistory}
             className={
@@ -29,10 +29,6 @@ export function Header({ view, onGoDashboard, onGoHistory }: HeaderProps) {
             }
           >
             History
-          </button>
-          <button className="flex items-center gap-[7px] rounded-[9px] border border-border-control bg-white px-3.5 py-2 text-[13px] font-semibold text-text-primary shadow-card hover:border-[#d4d4d8] hover:bg-surface-muted">
-            Export report
-            <span className="text-[10px] text-text-faint">▾</span>
           </button>
         </div>
       </div>

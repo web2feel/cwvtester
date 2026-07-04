@@ -47,6 +47,7 @@ interface MetricCardProps {
 
 export function MetricCard({ metric }: MetricCardProps) {
   const [hovered, setHovered] = useState(false);
+  const notMeasurable = metric.measurable === false;
   const pill = STATUS_PILL[metric.status];
   const tooltip = METRIC_TOOLTIP[metric.id];
   const markerPct = markerPercent(metric.value, metric.goodThreshold, metric.poorThreshold);
@@ -64,32 +65,53 @@ export function MetricCard({ metric }: MetricCardProps) {
         </span>
       </div>
       <div className="mb-3 flex items-baseline gap-[3px]">
-        <span className="font-mono text-4xl font-semibold leading-none tracking-[-0.03em]">{metric.displayValue}</span>
-        {metric.unit && <span className="font-mono text-base text-text-faint">{metric.unit}</span>}
+        <span
+          className={`font-mono text-4xl font-semibold leading-none tracking-[-0.03em] ${
+            notMeasurable ? 'text-text-faint' : ''
+          }`}
+        >
+          {metric.displayValue}
+        </span>
+        {!notMeasurable && metric.unit && <span className="font-mono text-base text-text-faint">{metric.unit}</span>}
       </div>
-      <div
-        className="mb-3.5 inline-flex items-center gap-1.5 rounded-pill border px-2.5 py-1 text-[11.5px] font-semibold"
-        style={{ background: pill.bg, borderColor: pill.border, color: pill.text }}
-      >
-        <span className="h-1.5 w-1.5 rounded-full" style={{ background: pill.dot }} />
-        {statusLabel(metric.status)}
-      </div>
-      <div className="mb-[18px] text-[12.5px] leading-tight text-text-muted">{metric.fullName}</div>
-      <div className="relative mb-2">
-        <div className="flex h-1.5 overflow-hidden rounded-full">
-          <div className="w-[40%]" style={{ background: '#bbf7d0' }} />
-          <div className="w-[30%]" style={{ background: '#fde68a' }} />
-          <div className="w-[30%]" style={{ background: '#fecaca' }} />
+      {notMeasurable ? (
+        <div className="mb-3.5 inline-flex items-center gap-1.5 rounded-pill border border-border-control bg-surface-muted px-2.5 py-1 text-[11.5px] font-semibold text-text-tertiary">
+          <span className="h-1.5 w-1.5 rounded-full bg-text-faint" />
+          Not measurable
         </div>
+      ) : (
         <div
-          className="absolute -top-[3px] h-3 w-3 -translate-x-1/2 rounded-full border-2 border-white bg-text-primary shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
-          style={{ left: `${markerPct}%` }}
-        />
-      </div>
-      <div className="flex justify-between text-[10px] font-medium text-text-faint">
-        <span>Good</span>
-        <span>Poor</span>
-      </div>
+          className="mb-3.5 inline-flex items-center gap-1.5 rounded-pill border px-2.5 py-1 text-[11.5px] font-semibold"
+          style={{ background: pill.bg, borderColor: pill.border, color: pill.text }}
+        >
+          <span className="h-1.5 w-1.5 rounded-full" style={{ background: pill.dot }} />
+          {statusLabel(metric.status)}
+        </div>
+      )}
+      <div className="mb-[18px] text-[12.5px] leading-tight text-text-muted">{metric.fullName}</div>
+      {notMeasurable ? (
+        <div className="text-[11.5px] leading-snug text-text-faint">
+          Not measurable in lab tests — requires real-user interaction (field data).
+        </div>
+      ) : (
+        <>
+          <div className="relative mb-2">
+            <div className="flex h-1.5 overflow-hidden rounded-full">
+              <div className="w-[40%]" style={{ background: '#bbf7d0' }} />
+              <div className="w-[30%]" style={{ background: '#fde68a' }} />
+              <div className="w-[30%]" style={{ background: '#fecaca' }} />
+            </div>
+            <div
+              className="absolute -top-[3px] h-3 w-3 -translate-x-1/2 rounded-full border-2 border-white bg-text-primary shadow-[0_1px_3px_rgba(0,0,0,0.3)]"
+              style={{ left: `${markerPct}%` }}
+            />
+          </div>
+          <div className="flex justify-between text-[10px] font-medium text-text-faint">
+            <span>Good</span>
+            <span>Poor</span>
+          </div>
+        </>
+      )}
       {hovered && (
         <div className="absolute right-3.5 top-[42px] z-20 w-[228px] animate-fadeInFast rounded-xl bg-text-primary p-3.5 text-xs leading-[1.5] text-surface-page shadow-tooltip">
           <div className="mb-[7px] font-semibold text-white">{metric.fullName}</div>

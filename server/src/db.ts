@@ -2,7 +2,7 @@ import Database from 'better-sqlite3';
 import path from 'node:path';
 import fs from 'node:fs';
 
-const dataDir = path.join(__dirname, '..', 'data');
+const dataDir = process.env.CWV_DATA_DIR ?? path.join(__dirname, '..', 'data');
 fs.mkdirSync(dataDir, { recursive: true });
 
 export const db = new Database(path.join(dataDir, 'db.sqlite'));
@@ -35,7 +35,7 @@ export interface AuditRow {
 
 export function insertAudit(id: string, url: string, device: string, createdAt: number): void {
   db.prepare(
-    `INSERT INTO audits (id, url, device, status, stage, created_at) VALUES (?, ?, ?, 'queued', 'Launching Chrome…', ?)`
+    `INSERT INTO audits (id, url, device, status, stage, created_at) VALUES (?, ?, ?, 'queued', 'Waiting in queue…', ?)`
   ).run(id, url, device, createdAt);
 }
 
@@ -70,4 +70,13 @@ export function mostRecentUrl(): string | undefined {
     .prepare(`SELECT url FROM audits WHERE status = 'done' ORDER BY created_at DESC LIMIT 1`)
     .get() as { url: string } | undefined;
   return row?.url;
+}
+
+export function sweepOrphanedAudits(finishedAt: number): number {
+  const info = db
+    .prepare(
+      `UPDATE audits SET status = 'error', stage = NULL, error = 'Interrupted by server restart.', finished_at = ? WHERE status IN ('queued', 'running')`
+    )
+    .run(finishedAt);
+  return info.changes;
 }
