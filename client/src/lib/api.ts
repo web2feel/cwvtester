@@ -1,13 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import type { AuditJobStatusResponse, AuditResult, Device, HistoryRun } from '../types';
+import type { AuthConfig, AuditJobStatusResponse, AuditResult, Device, HistoryRun } from '../types';
 
 const BASE = '/api';
 
-export async function submitAudit(url: string, device: Device): Promise<string> {
+export async function submitAudit(url: string, device: Device, auth?: AuthConfig): Promise<string> {
   const res = await fetch(`${BASE}/audits`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ url, device }),
+    body: JSON.stringify({ url, device, ...(auth ? { auth } : {}) }),
   });
   if (!res.ok) {
     const body = await res.json().catch(() => ({}));
