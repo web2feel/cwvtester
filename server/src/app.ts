@@ -2,7 +2,7 @@ import cors from 'cors';
 import express from 'express';
 import { getAudit, listAuditsForUrl, mostRecentUrl } from './db';
 import { getJob, startAudit } from './runner';
-import type { AuditJobStatusResponse, AuditResult, Device, HistoryRun } from './types';
+import type { AuthConfig, AuditJobStatusResponse, AuditResult, Device, HistoryRun } from './types';
 
 const app = express();
 app.use(cors());
@@ -18,14 +18,34 @@ function isValidUrl(value: unknown): value is string {
   }
 }
 
+function parseAuth(value: unknown): AuthConfig | undefined | 'invalid' {
+  if (value === undefined || value === null) return undefined;
+  if (
+    typeof value === 'object' &&
+    (value as any).type === 'basic' &&
+    typeof (value as any).username === 'string' &&
+    (value as any).username.length > 0 &&
+    typeof (value as any).password === 'string' &&
+    (value as any).password.length > 0
+  ) {
+    return { type: 'basic', username: (value as any).username, password: (value as any).password };
+  }
+  return 'invalid';
+}
+
 app.post('/api/audits', (req, res) => {
-  const { url, device } = req.body ?? {};
+  const { url, device, auth } = req.body ?? {};
   if (!isValidUrl(url)) {
     res.status(400).json({ error: 'A valid http(s) URL is required.' });
     return;
   }
+  const parsedAuth = parseAuth(auth);
+  if (parsedAuth === 'invalid') {
+    res.status(400).json({ error: 'Invalid auth: expected { type: "basic", username, password }.' });
+    return;
+  }
   const normalizedDevice: Device = device === 'desktop' ? 'desktop' : 'mobile';
-  const id = startAudit(url, normalizedDevice);
+  const id = startAudit(url, normalizedDevice, parsedAuth);
   res.status(201).json({ id });
 });
 
@@ -70,6 +90,7 @@ app.get('/api/audits', (req, res) => {
       id: row.id,
       url: row.url,
       device: row.device as Device,
+      authUsed: result.authUsed,
       createdAt: row.created_at,
       score: result.score,
       status: result.status,
