@@ -1,7 +1,9 @@
 import { AuditForm } from '../components/AuditForm';
+import { CulpritsSection } from '../components/CulpritsSection';
 import { Diagnostics } from '../components/Diagnostics';
 import { EmptyState } from '../components/EmptyState';
 import { ErrorState } from '../components/ErrorState';
+import { Filmstrip } from '../components/Filmstrip';
 import { Footer } from '../components/Footer';
 import { LoadingState } from '../components/LoadingState';
 import { MetricsGrid } from '../components/MetricsGrid';
@@ -70,7 +72,9 @@ export function Dashboard({
       {phase === 'done' && result && (
         <>
           <SummaryHero result={result} />
+          {result.filmstrip && result.filmstrip.length > 0 && <Filmstrip frames={result.filmstrip} />}
           <MetricsGrid result={result} />
+          {result.culprits && result.culprits.length > 0 && <CulpritsSection culprits={result.culprits} />}
           <OpportunitiesList opportunities={result.opportunities} />
           <ResourceTable resources={result.resources} />
           <Diagnostics diagnostics={result.diagnostics} />
