@@ -1,9 +1,9 @@
 import * as chromeLauncher from 'chrome-launcher';
 import { randomUUID } from 'node:crypto';
 import { completeAudit, failAudit, insertAudit, updateStage } from './db';
-import { getLhrRuntimeError, mapLhrToAuditResult } from './mapping';
+import { buildAuthHeaders, getLhrRuntimeError, mapLhrToAuditResult } from './mapping';
 import { createQueue, withTimeout } from './queue';
-import type { AuditJobStatus, Device } from './types';
+import type { AuthConfig, AuditJobStatus, Device } from './types';
 
 interface Job {
   status: AuditJobStatus;
@@ -33,11 +33,11 @@ const LIGHTHOUSE_CONFIG: Record<Device, any> = {
   },
 };
 
-export function startAudit(url: string, device: Device): string {
+export function startAudit(url: string, device: Device, auth?: AuthConfig): string {
   const id = randomUUID();
   insertAudit(id, url, device, Date.now());
   jobs.set(id, { status: 'queued', stage: 'Waiting in queue…' });
-  auditQueue.enqueue(() => runAudit(id, url, device));
+  auditQueue.enqueue(() => runAudit(id, url, device, auth));
   return id;
 }
 
@@ -50,7 +50,7 @@ function setStage(id: string, stage: string): void {
   updateStage(id, stage);
 }
 
-async function runAudit(id: string, url: string, device: Device): Promise<void> {
+async function runAudit(id: string, url: string, device: Device, auth?: AuthConfig): Promise<void> {
   setStage(id, 'Launching Chrome…');
 
   let chrome: chromeLauncher.LaunchedChrome;
@@ -70,8 +70,14 @@ async function runAudit(id: string, url: string, device: Device): Promise<void> 
     // dynamic import sidesteps that interop path and loads cleanly. See task-4
     // report for details.
     const { default: lighthouse } = await import('lighthouse');
+    const baseConfig = LIGHTHOUSE_CONFIG[device];
+    const extraHeaders = buildAuthHeaders(auth);
+    const runConfig = {
+      ...baseConfig,
+      settings: { ...baseConfig.settings, extraHeaders },
+    };
     const runnerResult = await withTimeout(
-      lighthouse(url, { port: chrome.port, output: 'json' }, LIGHTHOUSE_CONFIG[device]),
+      lighthouse(url, { port: chrome.port, output: 'json' }, runConfig),
       AUDIT_TIMEOUT_MS,
       'The audit timed out after 90 seconds.'
     );
@@ -85,7 +91,7 @@ async function runAudit(id: string, url: string, device: Device): Promise<void> 
 
     setStage(id, 'Analyzing performance…');
     setStage(id, 'Generating report…');
-    const result = mapLhrToAuditResult(runnerResult.lhr, url, device);
+    const result = mapLhrToAuditResult(runnerResult.lhr, url, device, auth ? 'basic' : null);
 
     completeAudit(id, JSON.stringify(result), Date.now());
     jobs.delete(id); // DB row is authoritative once terminal.
