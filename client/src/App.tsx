@@ -11,6 +11,9 @@ type AuditPhase = 'idle' | 'running' | 'error' | 'done';
 export default function App() {
   const [view, setView] = useState<View>('dashboard');
   const [device, setDevice] = useState<Device>('mobile');
+  const [authMethod, setAuthMethod] = useState<'none' | 'basic'>('none');
+  const [authUsername, setAuthUsername] = useState('');
+  const [authPassword, setAuthPassword] = useState('');
   const [auditId, setAuditId] = useState<string | null>(null);
   const [phase, setPhase] = useState<AuditPhase>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -42,11 +45,15 @@ export default function App() {
     window.scrollTo(0, 0);
   };
 
+  const authComplete = authMethod === 'basic' && authUsername.trim() !== '' && authPassword !== '';
+
   const runAudit = async (url: string) => {
     setPhase('running');
     setError(null);
     try {
-      const id = await submitAudit(url, device);
+      const auth =
+        authComplete ? ({ type: 'basic' as const, username: authUsername, password: authPassword }) : undefined;
+      const id = await submitAudit(url, device, auth);
       setAuditId(id);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start the audit.');
@@ -85,6 +92,13 @@ export default function App() {
             error={error}
             result={result}
             completedAt={completedAt}
+            authMethod={authMethod}
+            authUsername={authUsername}
+            authPassword={authPassword}
+            onAuthMethodChange={setAuthMethod}
+            onAuthUsernameChange={setAuthUsername}
+            onAuthPasswordChange={setAuthPassword}
+            authIncomplete={authMethod === 'basic' && !authComplete}
           />
         ) : (
           <History onBack={goDashboard} onOpenRun={openRun} />
