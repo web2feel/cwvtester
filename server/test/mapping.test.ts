@@ -482,3 +482,46 @@ describe('mapOpportunities affects + byte-only', () => {
     expect(result[0].affectedResources).toEqual([{ name: 'cdn.example.com · vendor.js', size: '100 KB' }]);
   });
 });
+
+describe('mapOpportunities severity tier boundaries', () => {
+  function lhrWith(savingsMs: number, savingsBytes?: number) {
+    return {
+      audits: {
+        'the-audit': {
+          title: 'Audit',
+          description: 'Desc.',
+          details: {
+            type: 'opportunity',
+            overallSavingsMs: savingsMs,
+            ...(savingsBytes !== undefined ? { overallSavingsBytes: savingsBytes } : {}),
+            items: [],
+          },
+        },
+      },
+    };
+  }
+
+  it('applies ms severity boundaries at 800 and 300', () => {
+    expect(mapOpportunities(lhrWith(800) as any)[0].severity).toBe('high');
+    expect(mapOpportunities(lhrWith(799) as any)[0].severity).toBe('medium');
+    expect(mapOpportunities(lhrWith(300) as any)[0].severity).toBe('medium');
+    expect(mapOpportunities(lhrWith(299) as any)[0].severity).toBe('low');
+  });
+
+  it('applies byte severity boundaries at 512000 and 102400 when ms is zero', () => {
+    expect(mapOpportunities(lhrWith(0, 512000) as any)[0].severity).toBe('high');
+    expect(mapOpportunities(lhrWith(0, 511999) as any)[0].severity).toBe('medium');
+    expect(mapOpportunities(lhrWith(0, 102400) as any)[0].severity).toBe('medium');
+    expect(mapOpportunities(lhrWith(0, 102399) as any)[0].severity).toBe('low');
+  });
+
+  it('includes exactly at the 10 KB byte floor and excludes just below it', () => {
+    expect(mapOpportunities(lhrWith(0, 10240) as any)).toHaveLength(1);
+    expect(mapOpportunities(lhrWith(0, 10240) as any)[0].severity).toBe('low');
+    expect(mapOpportunities(lhrWith(0, 10239) as any)).toHaveLength(0);
+  });
+
+  it('uses ms severity, not byte severity, when both ms and large bytes are present', () => {
+    expect(mapOpportunities(lhrWith(100, 600000) as any)[0].severity).toBe('low');
+  });
+});
