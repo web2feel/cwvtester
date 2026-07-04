@@ -75,7 +75,7 @@ export function Dashboard({
           {result.filmstrip && result.filmstrip.length > 0 && <Filmstrip frames={result.filmstrip} />}
           <MetricsGrid result={result} />
           {result.culprits && result.culprits.length > 0 && <CulpritsSection culprits={result.culprits} />}
-          <OpportunitiesList opportunities={result.opportunities} />
+          <OpportunitiesList key={result.timestamp} opportunities={result.opportunities} />
           <ResourceTable resources={result.resources} />
           <Diagnostics diagnostics={result.diagnostics} />
           <Footer />
