@@ -87,9 +87,24 @@ export function getScoreStatus(score: number): Status {
 export function mapMetric(lhr: any, id: MetricValue['id']): MetricValue {
   const meta = METRIC_META[id];
   const audit = lhr.audits[meta.auditKey];
-  const value = (audit?.numericValue as number) ?? 0;
-  const { display, unit } = parseDisplayValue(audit?.displayValue ?? String(value));
   const t = METRIC_THRESHOLDS[id];
+  if (typeof audit?.numericValue !== 'number') {
+    // Lab runs cannot produce every metric (INP needs a real user interaction).
+    return {
+      id,
+      label: meta.label,
+      fullName: meta.fullName,
+      value: 0,
+      unit: '',
+      displayValue: '—',
+      status: 'good',
+      measurable: false,
+      goodThreshold: t.good,
+      poorThreshold: t.poor,
+    };
+  }
+  const value = audit.numericValue as number;
+  const { display, unit } = parseDisplayValue(audit.displayValue ?? String(value));
   return {
     id,
     label: meta.label,
@@ -98,6 +113,7 @@ export function mapMetric(lhr: any, id: MetricValue['id']): MetricValue {
     unit,
     displayValue: display,
     status: getMetricStatus(id, value),
+    measurable: true,
     goodThreshold: t.good,
     poorThreshold: t.poor,
   };

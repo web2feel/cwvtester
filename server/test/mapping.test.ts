@@ -274,3 +274,24 @@ describe('buildSummary', () => {
     expect(result.summarySentence).toContain('**~1.5s**');
   });
 });
+
+describe('mapMetric measurable flag', () => {
+  it('marks a metric not measurable when its audit is missing (lab INP)', () => {
+    const lhr = {
+      audits: {
+        'largest-contentful-paint': { displayValue: '2.4 s', numericValue: 2400 },
+        // no interaction-to-next-paint — lab navigation runs never produce it
+      },
+    };
+
+    const inp = mapMetric(lhr as any, 'inp');
+    expect(inp.measurable).toBe(false);
+    expect(inp.displayValue).toBe('—');
+    expect(inp.unit).toBe('');
+    expect(inp.value).toBe(0);
+
+    const lcp = mapMetric(lhr as any, 'lcp');
+    expect(lcp.measurable).toBe(true);
+    expect(lcp.displayValue).toBe('2.4');
+  });
+});
