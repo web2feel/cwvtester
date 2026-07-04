@@ -1,4 +1,4 @@
-import type { AuditResult, Device, DiagnosticsData, MetricValue, Opportunity, ResourceRow, Status } from './types';
+import type { AuditResult, CwvVerdict, Device, DiagnosticsData, MetricValue, Opportunity, ResourceRow, Status } from './types';
 
 const METRIC_THRESHOLDS: Record<MetricValue['id'], { good: number; poor: number }> = {
   lcp: { good: 2500, poor: 4000 },
@@ -82,6 +82,19 @@ export function getScoreStatus(score: number): Status {
   if (score >= 90) return 'good';
   if (score >= 50) return 'needs-improvement';
   return 'poor';
+}
+
+export function buildCwvVerdict(metrics: MetricValue[]): CwvVerdict {
+  const byId = new Map(metrics.map(m => [m.id, m]));
+  const considered = [byId.get('lcp'), byId.get('cls')].filter((m): m is MetricValue => m !== undefined);
+  const failing = considered
+    .filter(m => m.measurable !== false && m.status !== 'good')
+    .map(m => m.label);
+  return {
+    passes: failing.length === 0,
+    failing,
+    note: 'Lab verdict from LCP + CLS. INP requires field data.',
+  };
 }
 
 export function mapMetric(lhr: any, id: MetricValue['id']): MetricValue {
@@ -263,6 +276,7 @@ export function mapLhrToAuditResult(lhr: any, url: string, device: Device): Audi
     opportunities,
     resources,
     diagnostics,
+    cwvVerdict: buildCwvVerdict(metrics),
     lighthouseVersion: lhr.lighthouseVersion ?? 'unknown',
     chromeVersion: lhr.environment?.hostUserAgent?.match(/Chrome\/([\d.]+)/)?.[1] ?? 'unknown',
     timestamp: Date.now(),

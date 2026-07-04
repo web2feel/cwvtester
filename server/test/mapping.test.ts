@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  buildCwvVerdict,
   buildSummary,
   getLhrRuntimeError,
   getMetricStatus,
@@ -10,6 +11,7 @@ import {
   mapMetric,
   mapOpportunities,
 } from '../src/mapping';
+import type { MetricValue } from '../src/types';
 
 describe('getLhrRuntimeError', () => {
   it('returns the message when runtimeError has a real code', () => {
@@ -293,5 +295,58 @@ describe('mapMetric measurable flag', () => {
     const lcp = mapMetric(lhr as any, 'lcp');
     expect(lcp.measurable).toBe(true);
     expect(lcp.displayValue).toBe('2.4');
+  });
+});
+
+function metricStub(id: MetricValue['id'], label: string, status: MetricValue['status'], measurable = true): MetricValue {
+  return {
+    id,
+    label,
+    fullName: label,
+    value: 0,
+    unit: '',
+    displayValue: '0',
+    status,
+    measurable,
+    goodThreshold: 1,
+    poorThreshold: 2,
+  };
+}
+
+describe('buildCwvVerdict', () => {
+  it('passes when lab LCP and CLS are both good', () => {
+    const verdict = buildCwvVerdict([
+      metricStub('lcp', 'LCP', 'good'),
+      metricStub('cls', 'CLS', 'good'),
+      metricStub('inp', 'INP', 'good', false),
+    ]);
+    expect(verdict.passes).toBe(true);
+    expect(verdict.failing).toEqual([]);
+    expect(verdict.note).toBe('Lab verdict from LCP + CLS. INP requires field data.');
+  });
+
+  it('fails and names the failing metric', () => {
+    const verdict = buildCwvVerdict([
+      metricStub('lcp', 'LCP', 'needs-improvement'),
+      metricStub('cls', 'CLS', 'good'),
+    ]);
+    expect(verdict.passes).toBe(false);
+    expect(verdict.failing).toEqual(['LCP']);
+  });
+
+  it('lists both LCP and CLS when both fail', () => {
+    const verdict = buildCwvVerdict([
+      metricStub('lcp', 'LCP', 'poor'),
+      metricStub('cls', 'CLS', 'poor'),
+    ]);
+    expect(verdict.failing).toEqual(['LCP', 'CLS']);
+  });
+
+  it('ignores non-measurable LCP/CLS rather than failing them', () => {
+    const verdict = buildCwvVerdict([
+      metricStub('lcp', 'LCP', 'good', false),
+      metricStub('cls', 'CLS', 'good'),
+    ]);
+    expect(verdict.passes).toBe(true);
   });
 });
