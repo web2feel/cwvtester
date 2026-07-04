@@ -1,4 +1,4 @@
-import type { AuditResult, CwvVerdict, Device, DiagnosticsData, MetricValue, Opportunity, ResourceRow, Status } from './types';
+import type { AuditResult, CulpritItem, CwvVerdict, Device, DiagnosticsData, MetricCulpritGroup, MetricValue, Opportunity, ResourceRow, Status } from './types';
 
 const METRIC_THRESHOLDS: Record<MetricValue['id'], { good: number; poor: number }> = {
   lcp: { good: 2500, poor: 4000 },
@@ -226,6 +226,87 @@ export function mapOpportunities(lhr: any, pageUrl = ''): Opportunity[] {
   return opportunities.sort((a, b) => b.savingsMs - a.savingsMs || (b.savingsBytes ?? 0) - (a.savingsBytes ?? 0));
 }
 
+const CULPRIT_ITEM_CAP = 5;
+
+function nodeLabelOf(item: any): string | null {
+  const node = item?.node;
+  if (!node) return null;
+  return node.selector || node.nodeLabel || null;
+}
+
+export function mapCulprits(lhr: any, metrics: MetricValue[], pageUrl: string): MetricCulpritGroup[] {
+  const byId = new Map(metrics.map(m => [m.id, m]));
+  const isFailing = (id: 'lcp' | 'cls' | 'tbt'): boolean => {
+    const metric = byId.get(id);
+    return !!metric && metric.measurable !== false && metric.status !== 'good';
+  };
+  const groups: MetricCulpritGroup[] = [];
+
+  if (isFailing('lcp')) {
+    const items: CulpritItem[] = [];
+    const lcpDetails = lhr.audits?.['largest-contentful-paint-element']?.details?.items;
+    if (Array.isArray(lcpDetails)) {
+      // items[0] is a table holding the LCP element node; items[1] the phase table.
+      const nodeItems: any[] = Array.isArray(lcpDetails[0]?.items) ? lcpDetails[0].items : [];
+      const label = nodeLabelOf(nodeItems[0]);
+      if (label) {
+        const snippet = nodeItems[0]?.node?.snippet;
+        items.push({ label, ...(typeof snippet === 'string' ? { detail: snippet } : {}) });
+      }
+      const phaseItems: any[] = Array.isArray(lcpDetails[1]?.items) ? lcpDetails[1].items : [];
+      for (const phase of phaseItems) {
+        if (typeof phase?.phase === 'string' && typeof phase?.timing === 'number') {
+          items.push({ label: phase.phase, value: `${Math.round(phase.timing)} ms` });
+        }
+      }
+    }
+    const prioritize = lhr.audits?.['prioritize-lcp-image'];
+    if (prioritize && typeof prioritize.score === 'number' && prioritize.score < 1) {
+      items.push({ label: 'LCP image is not prioritized', detail: 'Preload it or raise its fetchpriority.' });
+    }
+    if (items.length > 0) {
+      groups.push({ metricId: 'lcp', metricLabel: 'LCP', items: items.slice(0, CULPRIT_ITEM_CAP) });
+    }
+  }
+
+  if (isFailing('cls')) {
+    const shiftItems: any[] =
+      lhr.audits?.['layout-shifts']?.details?.items ?? lhr.audits?.['layout-shift-elements']?.details?.items ?? [];
+    const items: CulpritItem[] = [];
+    for (const item of Array.isArray(shiftItems) ? shiftItems : []) {
+      const label = nodeLabelOf(item);
+      if (!label) continue;
+      const score = typeof item?.score === 'number' ? item.score : null;
+      items.push({ label, ...(score !== null ? { value: `shift ${round2(score)}` } : {}) });
+    }
+    if (items.length > 0) {
+      groups.push({ metricId: 'cls', metricLabel: 'CLS', items: items.slice(0, CULPRIT_ITEM_CAP) });
+    }
+  }
+
+  if (isFailing('tbt')) {
+    const items: CulpritItem[] = [];
+    const longTasks: any[] = lhr.audits?.['long-tasks']?.details?.items ?? [];
+    for (const task of Array.isArray(longTasks) ? longTasks : []) {
+      if (typeof task?.url === 'string' && typeof task?.duration === 'number') {
+        items.push({ label: resourceDisplayName(task.url, pageUrl), value: `${Math.round(task.duration)} ms` });
+      }
+    }
+    const thirdParties: any[] = lhr.audits?.['third-party-summary']?.details?.items ?? [];
+    for (const entry of Array.isArray(thirdParties) ? thirdParties : []) {
+      const name = typeof entry?.entity === 'string' ? entry.entity : entry?.entity?.text;
+      if (typeof name === 'string' && typeof entry?.blockingTime === 'number' && entry.blockingTime > 0) {
+        items.push({ label: name, value: `${Math.round(entry.blockingTime)} ms` });
+      }
+    }
+    if (items.length > 0) {
+      groups.push({ metricId: 'tbt', metricLabel: 'TBT', items: items.slice(0, CULPRIT_ITEM_CAP) });
+    }
+  }
+
+  return groups;
+}
+
 export function mapResources(lhr: any): ResourceRow[] {
   const details = lhr.audits?.['network-requests']?.details;
   const items: any[] = Array.isArray(details?.items) ? details.items : [];
@@ -309,6 +390,7 @@ export function mapLhrToAuditResult(lhr: any, url: string, device: Device): Audi
   const opportunities = mapOpportunities(lhr, pageUrl);
   const resources = mapResources(lhr);
   const diagnostics = mapDiagnostics(lhr);
+  const culprits = mapCulprits(lhr, metrics, pageUrl);
   const { sentence, boldValues } = buildSummary(score, device, opportunities);
   const totalSavingsMs = opportunities.reduce((sum, o) => sum + o.savingsMs, 0);
   return {
@@ -326,6 +408,7 @@ export function mapLhrToAuditResult(lhr: any, url: string, device: Device): Audi
     resources,
     diagnostics,
     cwvVerdict: buildCwvVerdict(metrics),
+    culprits,
     lighthouseVersion: lhr.lighthouseVersion ?? 'unknown',
     chromeVersion: lhr.environment?.hostUserAgent?.match(/Chrome\/([\d.]+)/)?.[1] ?? 'unknown',
     timestamp: Date.now(),

@@ -6,6 +6,7 @@ import {
   getMetricStatus,
   getScoreStatus,
   mapAllMetrics,
+  mapCulprits,
   mapDiagnostics,
   mapLhrToAuditResult,
   mapMetric,
@@ -523,5 +524,100 @@ describe('mapOpportunities severity tier boundaries', () => {
 
   it('uses ms severity, not byte severity, when both ms and large bytes are present', () => {
     expect(mapOpportunities(lhrWith(100, 600000) as any)[0].severity).toBe('low');
+  });
+});
+
+describe('mapCulprits', () => {
+  const page = 'https://example.com/';
+
+  it('extracts the LCP element and phase breakdown when LCP is failing', () => {
+    const lhr = {
+      audits: {
+        'largest-contentful-paint-element': {
+          details: {
+            items: [
+              { items: [{ node: { selector: 'div.hero > img', snippet: '<img src="hero.jpg">', nodeLabel: 'Hero image' } }] },
+              {
+                items: [
+                  { phase: 'TTFB', timing: 600 },
+                  { phase: 'Load Delay', timing: 1200 },
+                  { phase: 'Load Time', timing: 800 },
+                  { phase: 'Render Delay', timing: 400 },
+                ],
+              },
+            ],
+          },
+        },
+      },
+    };
+    const groups = mapCulprits(lhr as any, [metricStub('lcp', 'LCP', 'poor')], page);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].metricId).toBe('lcp');
+    expect(groups[0].metricLabel).toBe('LCP');
+    expect(groups[0].items[0]).toEqual({ label: 'div.hero > img', detail: '<img src="hero.jpg">' });
+    expect(groups[0].items[1]).toEqual({ label: 'TTFB', value: '600 ms' });
+    expect(groups[0].items).toHaveLength(5); // element + 4 phases, capped at 5
+  });
+
+  it('extracts shifted elements from layout-shifts when CLS is failing', () => {
+    const lhr = {
+      audits: {
+        'layout-shifts': {
+          details: { items: [{ node: { selector: 'header.banner' }, score: 0.18 }] },
+        },
+      },
+    };
+    const groups = mapCulprits(lhr as any, [metricStub('cls', 'CLS', 'needs-improvement')], page);
+    expect(groups).toHaveLength(1);
+    expect(groups[0].items).toEqual([{ label: 'header.banner', value: 'shift 0.18' }]);
+  });
+
+  it('falls back to layout-shift-elements for older Lighthouse output', () => {
+    const lhr = {
+      audits: {
+        'layout-shift-elements': {
+          details: { items: [{ node: { nodeLabel: 'Cookie banner' }, score: 0.3 }] },
+        },
+      },
+    };
+    const groups = mapCulprits(lhr as any, [metricStub('cls', 'CLS', 'poor')], page);
+    expect(groups[0].items).toEqual([{ label: 'Cookie banner', value: 'shift 0.3' }]);
+  });
+
+  it('extracts long tasks and blocking third parties when TBT is failing', () => {
+    const lhr = {
+      audits: {
+        'long-tasks': {
+          details: { items: [{ url: 'https://cdn.example.com/vendor.js', duration: 310 }] },
+        },
+        'third-party-summary': {
+          details: {
+            items: [
+              { entity: 'Google Tag Manager', blockingTime: 250 },
+              { entity: 'Harmless', blockingTime: 0 },
+            ],
+          },
+        },
+      },
+    };
+    const groups = mapCulprits(lhr as any, [metricStub('tbt', 'TBT', 'poor')], page);
+    expect(groups[0].items).toEqual([
+      { label: 'cdn.example.com · vendor.js', value: '310 ms' },
+      { label: 'Google Tag Manager', value: '250 ms' },
+    ]);
+  });
+
+  it('omits groups for passing metrics and for metrics with no extractable culprits', () => {
+    const lhr = {
+      audits: {
+        'layout-shifts': { details: { items: [{ node: { selector: 'div.a' }, score: 0.2 }] } },
+      },
+    };
+    const groups = mapCulprits(
+      lhr as any,
+      [metricStub('cls', 'CLS', 'good'), metricStub('lcp', 'LCP', 'poor'), metricStub('tbt', 'TBT', 'poor')],
+      page
+    );
+    expect(groups).toEqual([]); // CLS is good; LCP/TBT failing but their audits are absent
   });
 });
